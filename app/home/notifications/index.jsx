@@ -4,10 +4,9 @@ import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import images from '../../../components/data';
 
-const LOCAL_MACHINE_IP = 'http://192.168.102.197:8000'; 
+const LOCAL_MACHINE_IP = 'http://192.168.239.197:8000'; 
 const HOME_WIFI = 'http://192.168.10.218:8000';
 const AWS_SERVER_URL = 'http://3.27.248.187:8000';
-
 
 export default function Notifications() {
   const router = useRouter();
@@ -18,13 +17,15 @@ export default function Notifications() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await fetch(`${AWS_SERVER_URL}/events/`);
+        const response = await fetch(`${LOCAL_MACHINE_IP}/events/`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
         console.log(data);
-        setEvents(data.upcoming_events || []); // Ensure events is always an array
+        // Add a seen property to each event
+        const eventsWithSeen = data.upcoming_events.map(event => ({ ...event, seen: false }));
+        setEvents(eventsWithSeen || []); // Ensure events is always an array
       } catch (error) {
         console.error('Error fetching events:', error);
         setEvents([]); // Set events to an empty array on error
@@ -37,7 +38,12 @@ export default function Notifications() {
   }, []);
 
   // Handler for notification click
-  const handleNotificationClick = (link) => {
+  const handleNotificationClick = (index, link) => {
+    // Mark the notification as seen
+    const updatedEvents = [...events];
+    updatedEvents[index].seen = true;
+    setEvents(updatedEvents);
+
     // Open the link in the default browser
     Linking.openURL(link);
   };
@@ -67,22 +73,16 @@ export default function Notifications() {
         {events.map((event, index) => (
           <TouchableOpacity
             key={index}
-            style={styles.notificationItem}
-            onPress={() => handleNotificationClick(event.link)}  // Navigate to the event link
+            style={[styles.notificationItem, event.seen && styles.seenNotification]}
+            onPress={() => handleNotificationClick(index, event.link)}  // Navigate to the event link
           >
             <View style={styles.notificationTopContainer}>
-              <Text style={styles.smallNotification}>New</Text>
+              <Text style={styles.smallNotification}>{event.seen ? 'Seen' : 'New'}</Text>
               <Text style={styles.notificationDate}>{event.date}</Text>
             </View>
             <View style={styles.notificationContent}>
               <Text style={styles.notificationTitle}>{event.title}</Text>
-              <View style={styles.innerContainer}>
-                <Text style={styles.innerTitle}>{event.description}</Text>
-                <Image
-                  source={images.parkImage} // Using local image
-                  style={styles.innerImage}
-                />
-              </View>
+              <Text style={styles.notificationDescription}>Tap for more description</Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -95,8 +95,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    padding: 30,
-    marginTop: -20,
+    paddingHorizontal: 20,
+    paddingTop: 30, 
+    marginBottom: 30,
   },
   loadingContainer: {
     flex: 1,
@@ -109,17 +110,17 @@ const styles = StyleSheet.create({
   },
   notificationContainer: {
     marginBottom: 10,
-    marginTop: -60,
+    marginTop: 20,
   },
   logo: {
-    height: 20,
-    width: 20,
-    justifyContent: 'left',
-    alignItems: 'left',
-    marginTop: '15%',
+    height: 30,
+    width: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
   },
   arrow: {
-    height: '200%',
+    height: '100%',
     width: '100%',
     resizeMode: 'contain',
   },
@@ -127,18 +128,20 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
-    marginTop: "30%",
   },
   notificationItem: {
-    padding: 12,
+    padding: 16,
     backgroundColor: '#f9f9f9',
     borderRadius: 15,
-    marginBottom: 30,
+    marginBottom: 20,
     elevation: 2, // Adds shadow for Android
     shadowColor: '#000', // Adds shadow for iOS
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  seenNotification: {
+    backgroundColor: '#e0e0e0', // Different background color for seen notifications
   },
   notificationTopContainer: {
     flexDirection: 'row',
@@ -148,6 +151,7 @@ const styles = StyleSheet.create({
   smallNotification: {
     fontSize: 12,
     color: '#888888',
+    width: 50, // Ensure enough width for the text
   },
   notificationDate: {
     fontSize: 12,
@@ -157,29 +161,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   notificationTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 4,
   },
-  notificationText: {
+  notificationDescription: {
     fontSize: 14,
     color: '#333333',
-  },
-  innerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#149FBF', // Light blue background
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  innerTitle: {
-    fontSize: 14,
-    color: '#333333',
-    flex: 1,
-  },
-  innerImage: {
-    width: 60,
-    height: 50,
-    borderRadius: 10, // Square image
   },
 });

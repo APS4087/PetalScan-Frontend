@@ -3,6 +3,7 @@ import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, Dimensio
 import { Camera } from 'expo-camera/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import * as ImagePicker from 'expo-image-picker';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { GestureHandlerRootView, PinchGestureHandler } from 'react-native-gesture-handler';
@@ -13,6 +14,7 @@ import { useAuth } from '../../../context/authContext';
 
 const { width, height } = Dimensions.get('window');
 const AWS_SERVER_URL = 'http://3.27.248.187:8000';
+const LOCAL_MACHINE_IP = 'http://192.168.239.197:8000'; 
 
 export default function CameraScreen() {
   const router = useRouter();
@@ -97,7 +99,6 @@ export default function CameraScreen() {
       try {
         const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
         setSelectedImage(photo.uri); // Set the captured image URI
-        savePictureToGallery(photo.uri);
         handleImageDetection(photo.uri); // Call for image processing
       } catch (error) {
         console.error('Error taking picture:', error);
@@ -130,7 +131,7 @@ export default function CameraScreen() {
     });
   
     try {
-      const response = await fetch(`${AWS_SERVER_URL}/predict/`, {
+      const response = await fetch(`${LOCAL_MACHINE_IP}/predict/`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -199,6 +200,20 @@ export default function CameraScreen() {
     router.push('/payment'); // Adjust the route as needed
   };
 
+  const pickImageFromGallery = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+      handleImageDetection(result.assets[0].uri);
+    }
+  };
+
   if (hasCameraPermission === null || hasGalleryPermission === null) {
     return <View />;
   }
@@ -228,11 +243,13 @@ export default function CameraScreen() {
               <Text style={styles.realTimeButtonText}>Real-Time Detection (In Dev)</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity onPress={navigateToPayment} style={styles.snapsButton}>
-              <Text style={styles.snapsText}>
-                Snaps Left: {pictureCount}
-              </Text>
-            </TouchableOpacity>
+            !loading && resultLabel !== '' && (
+              <TouchableOpacity onPress={navigateToPayment} style={styles.snapsButton}>
+                <Text style={styles.snapsText}>
+                  Snaps Left: {pictureCount}
+                </Text>
+              </TouchableOpacity>
+            )
           )}
   
           <PinchGestureHandler onGestureEvent={onPinchEvent}>
@@ -275,8 +292,9 @@ export default function CameraScreen() {
           <TouchableOpacity onPress={takePicture} style={styles.captureButton}>
             <View style={styles.innerCaptureButton} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Icon name="settings" size={40} color="white" />
+          <TouchableOpacity style={styles.iconButton} onPress={pickImageFromGallery}>
+            <Icon name="photo-library" size={40} color="white" />
+            <Text style={styles.optionText}>Gallery</Text>
           </TouchableOpacity>
         </View>
   

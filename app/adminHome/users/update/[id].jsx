@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons'; // For back icon
+import { db, auth } from '../../../../firebaseConfig';
 
-// Create User Screen component
-export default function CreateUserScreen() {
-  // Set default username to "John Doe", uneditable
-  const [username, setUsername] = useState('John Doe');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+// Edit User Screen component
+export default function EditUserScreen() {
   const router = useRouter();
+  const { user } = useLocalSearchParams();  // Get the user object from the route parameters
 
-  // Function to handle user update (for now, just logs input)
-  const handleUpdateUser = () => {
-    console.log('User Updated:', { email, password });
-    // You can add additional actions here, like saving updated user data
-  };
+  // Parse the user object if it's a string
+  const parsedUser = user ? JSON.parse(user) : {};
+
+  // Set default values from route parameters
+  const [username, setUsername] = useState(parsedUser.username || 'John Doe');
+  const [email, setEmail] = useState(parsedUser.email || '');
+  const [password, setPassword] = useState('');
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -27,13 +27,19 @@ export default function CreateUserScreen() {
           </TouchableOpacity>
 
           {/* Title text */}
-          <Text style={styles.title}>Update User</Text>
+          <Text style={styles.title}>Edit User</Text>
 
-          {/* Username input field (Uneditable) */}
+          {/* Message indicating that editing is not available */}
+          <Text style={styles.message}>Editing user details is not available yet.</Text>
+
+          {/* Username input field */}
           <TextInput
-            style={[styles.input, styles.disabledInput]}  // Add style for uneditable field
+            style={styles.input}
+            placeholder="username"
+            placeholderTextColor="#8a8a8a"
             value={username}
-            editable={false}  // Make the field uneditable
+            onChangeText={setUsername}
+            editable={false} // Disable the input field
           />
 
           {/* Email input field */}
@@ -45,6 +51,7 @@ export default function CreateUserScreen() {
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
+            editable={false} // Disable the input field
           />
 
           {/* Password input field */}
@@ -55,10 +62,11 @@ export default function CreateUserScreen() {
             secureTextEntry
             value={password}
             onChangeText={setPassword}
+            editable={false} // Disable the input field
           />
 
           {/* Update button */}
-          <TouchableOpacity style={styles.updateButton} onPress={handleUpdateUser}>
+          <TouchableOpacity style={[styles.updateButton, styles.disabledButton]} disabled={true}>
             <Text style={styles.updateButtonText}>Update</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -67,7 +75,7 @@ export default function CreateUserScreen() {
   );
 }
 
-// Styles for the CreateUserScreen component
+// Styles for the EditUserScreen component
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -89,6 +97,12 @@ const styles = StyleSheet.create({
     marginBottom: '15%',
     textAlign: 'center',
   },
+  message: {
+    fontSize: 16,
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
   input: {
     width: '90%',
     padding: 12,
@@ -101,9 +115,6 @@ const styles = StyleSheet.create({
     color: 'black',
     height: 50,
   },
-  disabledInput: {
-    backgroundColor: '#E0E0E0',  // Light grey background to indicate the field is uneditable
-  },
   updateButton: {
     backgroundColor: '#000000',
     padding: 12,
@@ -113,6 +124,9 @@ const styles = StyleSheet.create({
     marginTop: 80,
     marginLeft: 35,
     height: 50,
+  },
+  disabledButton: {
+    backgroundColor: '#cccccc', // Change the background color to indicate it's disabled
   },
   updateButtonText: {
     color: '#ffffff',

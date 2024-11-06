@@ -23,6 +23,7 @@ function HomeScreen() {
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('Architecture'); // Default category
   const [isPremium, setIsPremium] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(''); // State for search query
 
   useEffect(() => {
     const fetchPlaces = async () => {
@@ -83,6 +84,11 @@ function HomeScreen() {
 
   const places = selectedCategory === 'Architecture' ? architectures : flowers;
 
+  // Filter places based on search query
+  const filteredPlaces = places.filter(place =>
+    place.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.content}>
@@ -106,6 +112,8 @@ function HomeScreen() {
             style={styles.searchBar}
             placeholder="Search"
             placeholderTextColor="#888"
+            value={searchQuery}
+            onChangeText={setSearchQuery} // Update search query state
           />
         </View>
 
@@ -126,7 +134,7 @@ function HomeScreen() {
         </View>
 
         {/* Image Cards */}
-        {places.map(place => (
+        {filteredPlaces.map(place => (
           <TouchableOpacity
             key={place.id}
             style={styles.card}

@@ -43,6 +43,7 @@
     "expo-system-ui": "~3.0.7",
     "expo-web-browser": "~13.0.3",
     "firebase": "^10.13.0",
+    "firebase-admin": "^12.7.0",
     "fs": "^0.0.1-security",
     "lottie-react-native": "^7.0.0",
     "react": "18.2.0",
