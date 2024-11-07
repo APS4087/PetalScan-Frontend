@@ -134,16 +134,19 @@ function HomeScreen() {
         </View>
 
         {/* Image Cards */}
-        {filteredPlaces.map(place => (
-          <TouchableOpacity
-            key={place.id}
-            style={styles.card}
-            onPress={() => router.push(`/home/${selectedCategory.toLowerCase()}/${place.id}`)}
-          >
-            <Image source={{ uri: place.imageUrl }} style={styles.cardImage} />
-            <Text style={styles.cardText}>{place.name}</Text>
-          </TouchableOpacity>
-        ))}
+        {filteredPlaces.map(place => {
+          const imageUrl = Array.isArray(place.imageUrl) ? place.imageUrl[0] : place.imageUrl;
+          return (
+            <TouchableOpacity
+              key={place.id}
+              style={styles.card}
+              onPress={() => router.push(`/home/${selectedCategory.toLowerCase()}/${place.id}`)}
+            >
+              <Image source={{ uri: imageUrl }} style={styles.cardImage} />
+              <Text style={styles.cardText}>{place.name}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
       {/* Navigation Bar at the Bottom */}
       <UserNavbar />

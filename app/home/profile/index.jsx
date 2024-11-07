@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from "react-native";
+import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, Dimensions, Alert } from "react-native";
 import images from "../../../components/data";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../../context/authContext";
-import { auth } from "../../../firebaseConfig";
+import { auth, db } from "../../../firebaseConfig";
 import { Ionicons } from '@expo/vector-icons';
+import { updateDoc, doc } from 'firebase/firestore';
 
 const { width, height } = Dimensions.get('window');
 
 const ProfilePage = ({ navigation }) => {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [username, setUsername] = useState(null);
 
   useEffect(() => {
@@ -22,13 +23,24 @@ const ProfilePage = ({ navigation }) => {
   const handleLogout = async () => {
     try {
       await auth.signOut(auth);
+      setUser(null);
       router.push('/auth');
     } catch (error) {
       console.log('Error at handleLogout', error);
     }
-  }
+  };
 
-
+  const handleDeactivateAccount = async () => {
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, { status: 'inactive' });
+      Alert.alert('Account Deactivated', 'Your account has been deactivated.');
+      handleLogout();
+    } catch (error) {
+      console.log('Error at handleDeactivateAccount', error);
+      Alert.alert('Error', 'Failed to deactivate account. Please try again.');
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -41,7 +53,7 @@ const ProfilePage = ({ navigation }) => {
 
       {/* Profile Picture */}
       <Image
-        source={{ uri: username ? `https://api.multiavatar.com/${username}.png` : 'https://api.multiavatar.com/bill.png' }}
+        source={{ uri: user?.profileImageUrl || (username ? `https://api.multiavatar.com/${username}.png` : 'https://api.multiavatar.com/bill.png') }}
         style={styles.profileImage}
       />
 
@@ -61,7 +73,6 @@ const ProfilePage = ({ navigation }) => {
           <Ionicons name="chevron-forward" size={24} color="#6e6e6e" />
         </TouchableOpacity>
         
-        
         <TouchableOpacity style={styles.option} onPress={handleLogout}>
           <View style={styles.optionContent}>
             <View style={styles.iconCircle}>
@@ -73,12 +84,12 @@ const ProfilePage = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.premiumButton} onPress={()=>router.push('/payment')}>
+      <TouchableOpacity style={styles.premiumButton} onPress={() => router.push('/payment')}>
         <Text style={styles.premiumText}>Upgrade to premium</Text>
       </TouchableOpacity>
 
       {/* Delete Account Button */}
-      <TouchableOpacity style={styles.deleteButton}>
+      <TouchableOpacity style={styles.deleteButton} onPress={handleDeactivateAccount}>
         <Text style={styles.deleteText}>Deactivate Account</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -143,7 +154,6 @@ const styles = StyleSheet.create({
   optionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    //borderWidth: 1,
     width: '80%',
     justifyContent: 'flex-start',
   },
@@ -175,7 +185,7 @@ const styles = StyleSheet.create({
     width: '54%',
     color: '#fff',
   },
-    premiumButton: {
+  premiumButton: {
     width: '90%',
     padding: height * 0.015,
     borderRadius: 10,

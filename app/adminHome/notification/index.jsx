@@ -1,24 +1,85 @@
-import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
-import React, { useState } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, TextInput, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import AdminNavbar from '../../../components/AdminNavbar';
-import { MaterialIcons } from '@expo/vector-icons';  // Import MaterialIcons
+import LottieView from 'lottie-react-native';
+import { MaterialIcons } from '@expo/vector-icons'; // Import MaterialIcons
 import images from '../../../components/data';
+import AdminNavbar from '../../../components/AdminNavbar';
 
-export default function AdminNotificationScreen({ navigation }){
+const LOCAL_MACHINE_IP = 'http://192.168.239.197:8000'; 
+const HOME_WIFI = 'http://192.168.10.218:8000';
+const AWS_SERVER_URL = 'http://3.27.248.187:8000';
+
+export default function AdminNotificationScreen({ navigation }) {
   const router = useRouter();
-  
+  const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filteredEvents, setFilteredEvents] = useState([]);
+
+  // Fetch events from the backend
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch(`${LOCAL_MACHINE_IP}/events/`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log(data);
+        // Add a seen property to each event
+        const eventsWithSeen = data.upcoming_events.map(event => ({ ...event, seen: false }));
+        setEvents(eventsWithSeen || []); // Ensure events is always an array
+        setFilteredEvents(eventsWithSeen || []); // Initialize filtered events
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        setEvents([]); // Set events to an empty array on error
+        setFilteredEvents([]); // Set filtered events to an empty array on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   // Handler for notification click
-  const handleNotificationClick = () => {
-    router.push('/notification/insideNotification');
+  const handleNotificationClick = (index, link) => {
+    // Mark the notification as seen
+    const updatedEvents = [...events];
+    updatedEvents[index].seen = true;
+    setEvents(updatedEvents);
+    setFilteredEvents(updatedEvents);
+
+    // Open the link in the default browser
+    Linking.openURL(link);
   };
 
-  // Handler for add notification click
-  const adminNotifonClick = () => {
-    router.push('/adminHome/notification/addNotification');
+  // Handler for search query change
+  const handleSearchQueryChange = (query) => {
+    setSearchQuery(query);
+    if (query === '') {
+      setFilteredEvents(events);
+    } else {
+      const filtered = events.filter(event =>
+        event.title.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredEvents(filtered);
+    }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LottieView
+          source={require('../../../assets/animations/notiLoadingAnimation.json')}
+          autoPlay
+          loop
+          style={styles.lottie}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screenContainer}>
@@ -36,7 +97,7 @@ export default function AdminNotificationScreen({ navigation }){
               style={styles.searchBar}
               placeholder="Search"
               value={searchQuery}
-              onChangeText={setSearchQuery}
+              onChangeText={handleSearchQueryChange}
             />
           </View>
 
@@ -51,52 +112,28 @@ export default function AdminNotificationScreen({ navigation }){
           </View>
 
           {/* Add Notification Button with Material Icon */}
-          <TouchableOpacity style={styles.blankContainer} onPress={adminNotifonClick}>
+          <TouchableOpacity style={styles.blankContainer} onPress={() => alert('Add feature is still under development')}>
             <MaterialIcons name="add" size={30} color="black" />
+            <Text style={styles.addText}>Add Notification (Under Development)</Text>
           </TouchableOpacity>
 
           {/* Notification Items */}
-          <TouchableOpacity
-            style={styles.notificationItem}
-            onPress={handleNotificationClick}
-          >
-            <View style={styles.notificationTopContainer}>
-              <Text style={styles.smallNotification}>Latest</Text>
-              <Text style={styles.notificationDate}>Aug 15, 2024</Text>
-            </View>
-            <View style={styles.notificationContent}>
-              <Text style={styles.notificationTitle}>New Update Available</Text>
-              <View style={styles.innerContainer}>
-                <Text style={styles.innerTitle}>Closed until September</Text>
-                <Image
-                  source={images.parkImage}
-                  style={styles.innerImage}
-                />
+          {filteredEvents.map((event, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[styles.notificationItem, event.seen && styles.seenNotification]}
+              onPress={() => handleNotificationClick(index, event.link)}  // Navigate to the event link
+            >
+              <View style={styles.notificationTopContainer}>
+                <Text style={styles.smallNotification}>{event.seen ? 'Seen' : 'New'}</Text>
+                <Text style={styles.notificationDate}>{event.date}</Text>
               </View>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.notificationBottonContainer}>
-          <TouchableOpacity
-            style={styles.notificationItem}
-            onPress={handleNotificationClick}
-          >
-            <View style={styles.notificationTopContainer}>
-              <Text style={styles.smallNotification}>Oldest</Text>
-              <Text style={styles.notificationDate}>Jul 20, 2024</Text>
-            </View>
-            <View style={styles.notificationContent}>
-              <Text style={styles.notificationTitle}>Feature Update</Text>
-              <View style={styles.oldContainer}>
-                <Text style={styles.innerTitle}>Closed until September</Text>
-                <Image
-                  source={images.parkImage}
-                  style={styles.innerImage}
-                />
+              <View style={styles.notificationContent}>
+                <Text style={styles.notificationTitle}>{event.title}</Text>
+                <Text style={styles.notificationDescription}>Tap for more description</Text>
               </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
         </View>
       </ScrollView>
 
@@ -116,6 +153,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     padding: 30,
+    marginBottom: 30,
   },
   scrollContent: {
     flexGrow: 1,
@@ -183,6 +221,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderColor: '#8F9EBC',
     borderWidth: 1,
+    flexDirection: 'row',
+  },
+  addText: {
+    marginLeft: 5,
+    fontSize: 10,
+    width: 200,
+    color: '#888',
   },
   notificationItem: {
     padding: 12,
@@ -195,6 +240,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  seenNotification: {
+    backgroundColor: '#e0e0e0', // Different background color for seen notifications
+  },
   notificationTopContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -203,6 +251,7 @@ const styles = StyleSheet.create({
   smallNotification: {
     fontSize: 12,
     color: '#888888',
+    width: 50, // Ensure enough width for the text
   },
   notificationDate: {
     fontSize: 12,
@@ -215,36 +264,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  innerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#149FBF',
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  oldContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#3588C6',
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  innerTitle: {
+  notificationDescription: {
     fontSize: 14,
     color: '#333333',
-    flex: 1,
-  },
-  innerImage: {
-    width: 60,
-    height: 50,
-    borderRadius: 10,
   },
   navibarContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lottie: {
+    width: 300,
+    height: 300,
   },
 });

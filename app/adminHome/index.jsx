@@ -7,11 +7,13 @@ import { db } from '../../firebaseConfig';
 import LottieView from 'lottie-react-native';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebaseConfig';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 const LOCAL_MACHINE_IP = 'http://192.168.239.197:8000';
+const HOME_WIFI = 'http://192.168.10.218:8000';
 
 function Admin({ navigation }) {
+  const router = useRouter();
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalRecommendations, setTotalRecommendations] = useState(0); // Number of architecture + flowers
   const [totalNotifications, setTotalNotifications] = useState(0);
@@ -89,7 +91,7 @@ function Admin({ navigation }) {
 
         {/* Cards Section */}
         <View style={styles.cardContainer}>
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={()=> router.push('/adminHome/users')}>
             <Text style={styles.cardTitle}>Total Users</Text>
             <View style={styles.cardRow}>
               <Text style={styles.cardNumber}>{totalUsers}</Text>
@@ -106,7 +108,7 @@ function Admin({ navigation }) {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={()=> router.push('/adminHome/data')}>
             <Text style={styles.cardTitle}>Total Recommendations</Text>
             <View style={styles.cardRow}>
               <Text style={styles.cardNumber}>{totalRecommendations}</Text>

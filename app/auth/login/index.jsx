@@ -2,9 +2,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvo
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { auth } from '../../../firebaseConfig';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getCustomErrorMessage } from '../../../utils/authUtils';
-import { getDoc, doc } from 'firebase/firestore';
+import { getDoc, doc, query, where, collection, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../../context/authContext';
 
@@ -23,13 +23,26 @@ export default function LoginScreen() {
     setIsLoading(true); // Start loading
     setErrorMessage(''); // Clear previous error message
     try {
+      // Authenticate the user with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      //console.log("User signed in: ", userCredential); // Log success
       const user = userCredential.user;
 
-      // Await the result of getUserData
-      const userData = await getUserData(user);
-      //console.log("User data: ", userData); // Log user data
+      // Fetch user data from Firestore using email
+      const userData = await getUserDataByEmail(email);
+
+      if (!userData) {
+        setErrorMessage('No such user found.');
+        await signOut(auth); // Sign out the user
+        setIsLoading(false);
+        return;
+      }
+
+      if (userData.status === 'inactive') {
+        setErrorMessage('Your account is suspended or deactivated. Please contact support.');
+        await signOut(auth); // Sign out the user
+        setIsLoading(false);
+        return;
+      }
 
       if (user.emailVerified) {
         setUser(userData); // Set the user in context
@@ -40,7 +53,7 @@ export default function LoginScreen() {
         }
       } else {
         setErrorMessage('Please verify your email address.');
-        await auth.signOut();
+        await signOut(auth); // Sign out the user
       }
     } catch (error) {
       console.error('Error signing in:', error);
@@ -54,27 +67,25 @@ export default function LoginScreen() {
     }
   };
 
-  const getUserData = async (user) => {
-    // Get user data from Firestore
-    if (user) {
-      try {
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
-          console.log("Fetched user data from Firestore: ", userData); // Log fetched data
-
-          return {
-            ...user,
-            username: userData.username,
-            userType: userData.userType,
-          };
-        } else {
-          console.error('No such document!');
-        }
-      } catch (error) {
-        console.error('Error getting user data:', error);
+  const getUserDataByEmail = async (email) => {
+    try {
+      console.log(`Querying Firestore for email: ${email}`);
+      const q = query(collection(db, 'users'), where('email', '==', email));
+      const querySnapshot = await getDocs(q);
+      console.log(`Query snapshot size: ${querySnapshot.size}`);
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+        console.log("Fetched user data from Firestore: ", userData); // Log fetched data
+        return {
+          ...userData,
+          uid: userDoc.id,
+        };
+      } else {
+        console.error('No such document!');
       }
+    } catch (error) {
+      console.error('Error getting user data:', error);
     }
     return null;
   };
