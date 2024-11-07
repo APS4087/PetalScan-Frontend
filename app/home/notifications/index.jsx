@@ -7,6 +7,7 @@ import images from '../../../components/data';
 const LOCAL_MACHINE_IP = 'http://192.168.239.197:8000'; 
 const HOME_WIFI = 'http://192.168.10.218:8000';
 const AWS_SERVER_URL = 'http://3.27.248.187:8000';
+const GOOGLE_CLOUD_RUN_URL = 'https://petalscan-img-129264674726.asia-southeast1.run.app';
 
 export default function Notifications() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function Notifications() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await fetch(`${LOCAL_MACHINE_IP}/events/`);
+        const response = await fetch(`${GOOGLE_CLOUD_RUN_URL}/events/`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }

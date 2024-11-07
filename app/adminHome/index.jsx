@@ -11,6 +11,8 @@ import { useRouter } from 'expo-router';
 
 const LOCAL_MACHINE_IP = 'http://192.168.239.197:8000';
 const HOME_WIFI = 'http://192.168.10.218:8000';
+const Faishal = 'http://172.20.10.3:8000';
+const GOOGLE_CLOUD_RUN_URL = 'https://petalscan-img-129264674726.asia-southeast1.run.app';
 
 function Admin({ navigation }) {
   const router = useRouter();
@@ -38,7 +40,7 @@ function Admin({ navigation }) {
         setTotalRecommendations(architecturesSnapshot.size + flowersSnapshot.size);
 
         // Fetch total notifications
-        const response = await fetch(`${LOCAL_MACHINE_IP}/events/`);
+        const response = await fetch(`${GOOGLE_CLOUD_RUN_URL}/events/`);
         const data = await response.json();
         setTotalNotifications(data.upcoming_events.length);
 

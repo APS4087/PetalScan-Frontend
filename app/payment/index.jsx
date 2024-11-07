@@ -13,6 +13,7 @@ const { width, height } = Dimensions.get('window');
 const MOBILE_DATA = 'http://0.0.0.0:8000'; 
 const HOME_WIFI = 'http://192.168.10.218:8000';
 const AWS_SERVER_URL = 'http://3.27.248.187:8000';
+const GOOGLE_CLOUD_RUN_URL = 'https://petalscan-img-129264674726.asia-southeast1.run.app';
 
 
 
@@ -82,7 +83,7 @@ export default function PremiumFeatureScreen() {
       }
   
       // Step 1: Call your backend to create a payment intent or subscription
-      const response = await fetch(`${AWS_SERVER_URL}/payment-intent/`, {
+      const response = await fetch(`${GOOGLE_CLOUD_RUN_URL}/payment-intent/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount, plan: selectedPlan, user_id: user.uid }), // Pass amount in cents, plan type, and user ID

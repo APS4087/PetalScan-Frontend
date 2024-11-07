@@ -11,10 +11,10 @@ import LottieView from 'lottie-react-native';
 import { db } from '../../../firebaseConfig';
 import { collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../../../context/authContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
-const AWS_SERVER_URL = 'http://3.27.248.187:8000';
-const LOCAL_MACHINE_IP = 'http://192.168.239.197:8000'; 
+const GOOGLE_CLOUD_RUN_URL = 'https://petalscan-img-129264674726.asia-southeast1.run.app';
 
 export default function CameraScreen() {
   const router = useRouter();
@@ -23,7 +23,8 @@ export default function CameraScreen() {
   const [hasCameraPermission, setHasCameraPermission] = useState(null);
   const [hasGalleryPermission, setHasGalleryPermission] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [pictureCount, setPictureCount] = useState(3);
+  const [freeSnaps, setFreeSnaps] = useState(3);
+  const [purchasedSnaps, setPurchasedSnaps] = useState(0);
   const [loading, setLoading] = useState(false);
   const [resultLabel, setResultLabel] = useState('');
   const [zoom, setZoom] = useState(0);
@@ -61,7 +62,7 @@ export default function CameraScreen() {
         const userDoc = await getDoc(userRef);
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          setPictureCount(userData.snaps || 3); // Default to 3 if no snaps field
+          setPurchasedSnaps(userData.snaps || 0); // Default to 0 if no snaps field
         }
       }
     };
@@ -71,24 +72,33 @@ export default function CameraScreen() {
   }, [user]);
 
   useEffect(() => {
-    // Reset the picture count every 24 hours
-    const resetPictureCount = () => {
-      setPictureCount(3);
+    const checkAndResetFreeSnaps = async () => {
+      const lastResetTime = await AsyncStorage.getItem('lastResetTime');
+      const currentTime = new Date().getTime();
+
+      if (!lastResetTime || currentTime - parseInt(lastResetTime) > 24 * 60 * 60 * 1000) {
+        // More than 24 hours have passed since the last reset
+        setFreeSnaps(3);
+        await AsyncStorage.setItem('lastResetTime', currentTime.toString());
+      }
     };
 
-    const interval = setInterval(resetPictureCount, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
-    return () => clearInterval(interval);
+    checkAndResetFreeSnaps();
   }, []);
 
   const takePicture = async () => {
     if (subscription && subscription.plan === 'Monthly' && subscription.status === 'active') {
       // Allow unlimited snaps for premium users
       await captureAndProcessImage();
-    } else if (pictureCount > 0) {
-      // Allow limited snaps for non-premium users
+    } else if (freeSnaps > 0) {
+      // Use free snaps first
       await captureAndProcessImage();
-      setPictureCount(pictureCount - 1);
-      updateSnapCount(pictureCount - 1);
+      setFreeSnaps(freeSnaps - 1);
+    } else if (purchasedSnaps > 0) {
+      // Use purchased snaps if no free snaps left
+      await captureAndProcessImage();
+      setPurchasedSnaps(purchasedSnaps - 1);
+      updateSnapCount(purchasedSnaps - 1);
     } else {
       Alert.alert('Limit Reached', 'You have reached your daily limit. Purchase a snaps bundle for more!');
     }
@@ -131,7 +141,7 @@ export default function CameraScreen() {
     });
   
     try {
-      const response = await fetch(`${LOCAL_MACHINE_IP}/predict/`, {
+      const response = await fetch(`${GOOGLE_CLOUD_RUN_URL}/predict/`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -179,7 +189,6 @@ export default function CameraScreen() {
   const resetPrediction = () => {
     setSelectedImage(null); // Clear the selected image
     setResultLabel(''); // Clear the prediction result
-    setPictureCount(3); // Reset the picture count if needed
   };
 
   const openImageModal = () => {
@@ -221,6 +230,8 @@ export default function CameraScreen() {
     return <Text>No access to camera</Text>;
   }
 
+  const totalSnaps = freeSnaps + purchasedSnaps;
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaView style={styles.container}>
@@ -243,10 +254,10 @@ export default function CameraScreen() {
               <Text style={styles.realTimeButtonText}>Real-Time Detection (In Dev)</Text>
             </TouchableOpacity>
           ) : (
-            !loading && resultLabel !== '' && (
+            !loading && (
               <TouchableOpacity onPress={navigateToPayment} style={styles.snapsButton}>
                 <Text style={styles.snapsText}>
-                  Snaps Left: {pictureCount}
+                  Snaps Left: {totalSnaps}
                 </Text>
               </TouchableOpacity>
             )
