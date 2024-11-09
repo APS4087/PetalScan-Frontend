@@ -1,11 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity, Dimensions, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import images from '../../../components/data';
 import Swiper from 'react-native-swiper';
 import OpenAI from 'openai';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../../context/authContext';
+import LottieView from 'lottie-react-native';
+import platloadinganimation from '../../../assets/animations/plantLoadingAnimation.json';
 
 const { width: viewportWidth, height: viewportHeight } = Dimensions.get('window');
 
@@ -18,7 +22,9 @@ const FlowerDetail = () => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [questionCount, setQuestionCount] = useState(0);
+  const [questionLimit, setQuestionLimit] = useState(5); // Default to 5
   const flatListRef = useRef(null);
+  const { user } = useAuth();
 
   const openai = new OpenAI({
     apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY, 
@@ -32,8 +38,21 @@ const FlowerDetail = () => {
         if (docSnap.exists()) {
           const flowerData = docSnap.data();
           setFlower(flowerData);
+
+          // Generate a short description using GPT-4o mini
+          const chatCompletion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: `You are a helpful assistant. Provide a short description for the following flower: ${flowerData.name} from Sinagpore Botanic Garden` },
+            ],
+            max_tokens: 50,
+          });
+
+          const description = chatCompletion.choices[0].message.content.trim();
+
           setMessages([
-            { text: `Hi, I am Petal-GPT. You have 5 free questions you can ask me about ${flowerData.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
+            { text: description, sender: 'bot', timestamp: new Date().toLocaleTimeString() },
+            { text: `Hi, I am Petal-GPT. You have ${questionLimit} free questions you can ask me about ${flowerData.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
           ]);
         } else {
           setError('No such document!');
@@ -48,9 +67,50 @@ const FlowerDetail = () => {
     fetchFlower();
   }, [id]);
 
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userRef = doc(collection(db, 'users'), user.uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const limit = userData.userType === 'premium' ? 20 : 5;
+          setQuestionLimit(limit);
+          setMessages([
+            { text: `Hi, I am Petal-GPT. You have ${limit} free questions you can ask me about ${flower?.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
+          ]);
+        } else {
+          console.error('No such user!');
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, [user]);
+
+  useEffect(() => {
+    const checkAndResetQuestionCount = async () => {
+      const lastResetTime = await AsyncStorage.getItem('lastQuestionResetTime');
+      const currentTime = new Date().getTime();
+      if (!lastResetTime || currentTime - parseInt(lastResetTime) > 24 * 60 * 60 * 1000) {
+        // More than 24 hours have passed since the last reset
+        setQuestionCount(0);
+        await AsyncStorage.setItem('lastQuestionResetTime', currentTime.toString());
+      } else {
+        const storedQuestionCount = await AsyncStorage.getItem('questionCount');
+        if (storedQuestionCount) {
+          setQuestionCount(parseInt(storedQuestionCount));
+        }
+      }
+    };
+    checkAndResetQuestionCount();
+  }, []);
+
   const handleSend = async () => {
-    if (questionCount >= 5) {
-      alert('You have reached the limit of 5 questions.');
+    if (questionCount >= questionLimit) {
+      alert(`You have reached the limit of ${questionLimit} questions.`);
       return;
     }
 
@@ -58,6 +118,7 @@ const FlowerDetail = () => {
     setMessages([...messages, userMessage]);
     setInputText('');
     setQuestionCount(questionCount + 1);
+    await AsyncStorage.setItem('questionCount', (questionCount + 1).toString());
 
     try {
       const chatCompletion = await openai.chat.completions.create({
@@ -83,7 +144,16 @@ const FlowerDetail = () => {
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#0000ff" style={styles.loadingIndicator} />;
+    return (
+      <View style={styles.loadingContainer}>
+        <LottieView
+          source={platloadinganimation}
+          autoPlay
+          loop
+          style={styles.lottieAnimation}
+        />
+      </View>
+    );
   }
 
   if (error) {
@@ -139,6 +209,7 @@ const FlowerDetail = () => {
           </>
         )}
         <View style={styles.chatContainer}>
+          <Text style={styles.questionCounter}>Questions Left: {questionLimit - questionCount}</Text>
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -175,6 +246,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     padding: '4%',
+    marginTop: '2%',
   },
   backButton: {
     position: 'absolute',
@@ -243,12 +315,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 10,
     textAlign: 'center',
   },
-  loadingIndicator: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lottieAnimation: {
+    width: 130,
+    height: 130,
   },
   errorText: {
     textAlign: 'center',
@@ -258,6 +334,12 @@ const styles = StyleSheet.create({
   chatContainer: {
     flex: 1,
     marginTop: 20,
+  },
+  questionCounter: {
+    fontSize: 16,
+    color: '#007bff',
+    textAlign: 'center',
+    marginBottom: 10,
   },
   chatContent: {
     paddingBottom: 20,
