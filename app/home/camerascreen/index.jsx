@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions, Image, Modal } from 'react-native';
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions, Image, Linking } from 'react-native';
 import { Camera } from 'expo-camera/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
@@ -12,6 +12,7 @@ import { db } from '../../../firebaseConfig';
 import { collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../../../context/authContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const { width, height } = Dimensions.get('window');
 const GOOGLE_CLOUD_RUN_URL = 'https://petalscan-img-129264674726.asia-southeast1.run.app';
@@ -230,6 +231,14 @@ export default function CameraScreen() {
     return <Text>No access to camera</Text>;
   }
 
+  // Function to search on Google
+  const searchOnGoogle = () => {
+    const query = encodeURIComponent(resultLabel);
+    const url = `https://www.google.com/search?q=${query}`;
+    Linking.openURL(url);
+  };
+
+
   const totalSnaps = freeSnaps + purchasedSnaps;
 
   return (
@@ -290,6 +299,10 @@ export default function CameraScreen() {
                   <Icon name="share" size={25} color="white" />
                   <Text style={styles.optionText}>Share</Text>
                 </TouchableOpacity>
+                <TouchableOpacity onPress={searchOnGoogle} style={styles.iconButton}>
+                  <Icon name="search" size={25} color="white" />
+                  <Text style={styles.optionText}>Search</Text>
+                </TouchableOpacity>
               </>
             )}
           </View>
@@ -305,24 +318,32 @@ export default function CameraScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={pickImageFromGallery}>
             <Icon name="photo-library" size={40} color="white" />
-            <Text style={styles.optionText}>Gallery</Text>
+            {/* <Text style={styles.optionText}>Gallery</Text> */}
           </TouchableOpacity>
         </View>
   
         {selectedImage && !loading && (
-          <View style={styles.previewContainer}>
+          <TouchableOpacity 
+            style={styles.previewContainer}
+            onPress={() => router.push({ pathname: '/home/camerascreen/imageDetail', params: { name: resultLabel} })}
+          >
             <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+            <View style={styles.overlayTextContainer}>
+              <Text style={styles.overlayText}>Tap to ask questions</Text>
+            </View>
             {resultLabel !== '' && (
               <View style={styles.resultContainer}>
-                <Text style={styles.resultText}>Prediction Result: {resultLabel}</Text>
+                <Text style={styles.resultText}>Prediction Result:</Text>
+                <Text style={styles.resultText}>{resultLabel}</Text>
               </View>
             )}
-          </View>
+          </TouchableOpacity>
         )}
       </SafeAreaView>
     </GestureHandlerRootView>
   );
-}  
+}
+
 
 // Styles
 const styles = StyleSheet.create({
@@ -391,6 +412,7 @@ const styles = StyleSheet.create({
   backButton: {
     padding: width * 0.02, // Responsive padding
   },
+  
   iconButton: {
     alignItems: 'center',
     padding: width * 0.02, // Responsive padding
@@ -401,7 +423,7 @@ const styles = StyleSheet.create({
     fontSize: width * 0.03, // Responsive font size
     textAlign: 'center',
     paddingHorizontal: width * 0.01, // Responsive padding
-    width: width * 0.1, // Responsive width
+    width: width * 0.115, // Responsive width
   },
   bottomBar: {
     position: 'absolute',
@@ -425,35 +447,57 @@ const styles = StyleSheet.create({
     borderRadius: width * 0.075, // Responsive border radius
     backgroundColor: 'red',
   },
-  previewContainer: {
-    position: 'absolute',
-    bottom: width * 0.4,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewImage: {
-    width: '90%',
-    aspectRatio: 1,
-    resizeMode: 'contain',
-    borderRadius: width * 0.05, // Responsive border radius
-  },
-  resultContainer: {
-    marginTop: height * 0.01, // Responsive margin
-    padding: height * 0.02, // Responsive padding
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: width * 0.05, // Responsive border radius
-    width: '90%',
-    alignSelf: 'center',
-  },
-  resultText: {
-    color: 'white',
-    fontSize: width * 0.045, // Responsive font size
-    textAlign: 'center',
-    flexWrap: 'wrap',
-    lineHeight: width * 0.06, // Responsive line height
-    flexShrink: 1,
-  },
+
+
+      previewContainer: {
+        position: 'absolute',
+        bottom: width * 0.4,
+        width: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      previewImage: {
+        width: '90%',
+        aspectRatio: 1,
+        resizeMode: 'contain',
+        borderRadius: width * 0.05, // Responsive border radius
+      },
+      overlayTextContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        //backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderTopLeftRadius: width * 0.05,
+        borderTopRightRadius: width * 0.05,
+        alignItems: 'center',
+      },
+      overlayText: {
+        color: 'white',
+        fontSize: width * 0.04, // Responsive font size
+        textAlign: 'center',
+        width: '100%',
+      },
+      resultContainer: {
+        marginTop: height * 0.01, // Responsive margin
+        padding: height * 0.02, // Responsive padding
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        borderRadius: width * 0.05, // Responsive border radius
+        width: '90%',
+        alignSelf: 'center',
+      },
+      resultText: {
+        color: 'white',
+        fontSize: width * 0.045, // Responsive font size
+        textAlign: 'center',
+        flexWrap: 'wrap',
+        lineHeight: width * 0.06, // Responsive line height
+        flexShrink: 1,
+      },
+    
+  
   loadingOverlay: {
     position: 'absolute',
     top: 0,

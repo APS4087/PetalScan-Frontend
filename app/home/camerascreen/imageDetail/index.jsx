@@ -1,0 +1,229 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Dimensions, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import OpenAI from 'openai';
+import { getFirestore, doc, getDoc, collection } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { db } from '../../../../firebaseConfig';
+import { useAuth } from '../../../../context/authContext';
+
+const { width: viewportWidth, height: viewportHeight } = Dimensions.get('window');
+
+const ImageDetail = () => {
+  const router = useRouter();
+  const { name, userId } = useLocalSearchParams(); // Assuming userId is passed as a parameter
+  const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [questionCount, setQuestionCount] = useState(0);
+  const [questionLimit, setQuestionLimit] = useState(5); // Default to 5
+  const flatListRef = useRef(null);
+  const { user } = useAuth();
+
+  const openai = new OpenAI({
+    apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY, 
+  });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userRef = doc(collection(db, 'users'), user.uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const limit = userData.userType === 'premium' ? 20 : 5;
+          setQuestionLimit(limit);
+          setMessages([
+            { text: `Hi, I am Petal-GPT. You have ${limit} free questions you can ask me about ${name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
+          ]);
+        } else {
+          console.error('No such user!');
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [name, userId]);
+
+  const handleSend = async () => {
+    if (questionCount >= questionLimit) {
+      alert(`You have reached the limit of ${questionLimit} questions.`);
+      return;
+    }
+
+    const userMessage = { text: inputText, sender: 'user', timestamp: new Date().toLocaleTimeString() };
+    setMessages([...messages, userMessage]);
+    setInputText('');
+    setQuestionCount(questionCount + 1);
+
+    try {
+      const chatCompletion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: `You are a helpful assistant. Provide detailed answers based on the following information about the image: ${name}. It is located in Singapore Botanic garden. You can also use your broader knowledge to provide more context and details.` },
+          { role: 'user', content: inputText },
+        ],
+        max_tokens: 150,
+      });
+
+      const botMessage = { text: chatCompletion.choices[0].message.content.trim(), sender: 'bot', timestamp: new Date().toLocaleTimeString() };
+      setMessages([...messages, userMessage, botMessage]);
+      flatListRef.current.scrollToEnd({ animated: true });
+    } catch (error) {
+      console.error('Error fetching GPT-4 response:', error);
+      if (error.message.includes('429')) {
+        Alert.alert('Quota Exceeded', 'You have exceeded your current quota. Please check your plan and billing details.');
+      } else {
+        Alert.alert('Error', 'There was an error processing your request. Please try again later.');
+      }
+    }
+  };
+
+  if (loading) {
+    return <ActivityIndicator size="large" color="#0000ff" style={styles.loadingIndicator} />;
+  }
+
+  return (
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <View style={styles.container}>
+        {/* Back button */}
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()} accessibilityLabel="Go back">
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{name}</Text>
+        <Text style={styles.questionCounter}>Questions Left: {questionLimit - questionCount}</Text>
+        <View style={styles.chatContainer}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={({ item }) => (
+              <View style={[styles.message, item.sender === 'user' ? styles.userMessage : styles.botMessage]}>
+                <Text style={styles.messageText}>{item.text}</Text>
+                <Text style={styles.timestamp}>{item.timestamp}</Text>
+              </View>
+            )}
+            keyExtractor={(item, index) => index.toString()}
+            contentContainerStyle={styles.chatContent}
+            onContentSizeChange={() => flatListRef.current.scrollToEnd({ animated: true })}
+          />
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              value={inputText}
+              onChangeText={setInputText}
+              placeholder="Ask a question..."
+              placeholderTextColor="#888"
+            />
+            <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+              <Text style={styles.sendButtonText}>Send</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    padding: viewportWidth * 0.04,
+  },
+  backButton: {
+    position: 'absolute',
+    top: viewportHeight * 0.05,
+    left: viewportWidth * 0.05,
+    width: 50,
+    zIndex: 1,
+  },
+  backButtonText: {
+    color: '#007bff',
+    fontSize: viewportWidth * 0.04,
+  },
+  title: {
+    fontSize: viewportWidth * 0.06,
+    fontWeight: 'bold',
+    marginTop: viewportHeight * 0.07,
+    marginBottom: viewportHeight * 0.02,
+    textAlign: 'center',
+  },
+  questionCounter: {
+    fontSize: viewportWidth * 0.04,
+    color: '#007bff',
+    textAlign: 'center',
+    marginBottom: viewportHeight * 0.02,
+  },
+  loadingIndicator: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  chatContainer: {
+    flex: 1,
+    marginTop: viewportHeight * 0.02,
+  },
+  chatContent: {
+    paddingBottom: viewportHeight * 0.02,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+    padding: viewportWidth * 0.02,
+  },
+  input: {
+    flex: 1,
+    height: viewportHeight * 0.05,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: viewportWidth * 0.05,
+    paddingHorizontal: viewportWidth * 0.02,
+    marginRight: viewportWidth * 0.02,
+  },
+  sendButton: {
+    backgroundColor: '#007bff',
+    borderRadius: viewportWidth * 0.05,
+    paddingVertical: viewportHeight * 0.01,
+    paddingHorizontal: viewportWidth * 0.04,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonText: {
+    color: '#fff',
+    fontSize: viewportWidth * 0.04,
+    width: 40,
+  },
+  message: {
+    padding: viewportWidth * 0.03,
+    borderRadius: viewportWidth * 0.05,
+    marginVertical: viewportHeight * 0.01,
+    maxWidth: '80%',
+    flexShrink: 1,
+  },
+  userMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#007aff',
+    borderBottomRightRadius: 0,
+  },
+  botMessage: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#e5e5ea',
+    borderBottomLeftRadius: 0,
+  },
+  messageText: {
+    color: '#000',
+  },
+  timestamp: {
+    fontSize: viewportWidth * 0.03,
+    color: '#aaa',
+    marginTop: viewportHeight * 0.005,
+    alignSelf: 'flex-end',
+  },
+});
+
+export default ImageDetail;
