@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Dimensions, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import OpenAI from 'openai';
 import { getFirestore, doc, getDoc, collection } from 'firebase/firestore';
@@ -7,6 +7,8 @@ import { getAuth } from 'firebase/auth';
 import { db } from '../../../../firebaseConfig';
 import { useAuth } from '../../../../context/authContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LottieView from 'lottie-react-native';
+import platloadinganimation from '../../../../assets/animations/plantLoadingAnimation.json';
 
 const { width: viewportWidth, height: viewportHeight } = Dimensions.get('window');
 
@@ -26,28 +28,42 @@ const ImageDetail = () => {
   });
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchUserDataAndDescription = async () => {
       try {
+        // Fetch user data
         const userRef = doc(collection(db, 'users'), user.uid);
         const userDoc = await getDoc(userRef);
         if (userDoc.exists()) {
           const userData = userDoc.data();
           const limit = userData.userType === 'premium' ? 20 : 5;
           setQuestionLimit(limit);
+
+          // Generate a short description using GPT-4o mini
+          const chatCompletion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: `You are a helpful assistant. Provide a short description for the following image detail: ${name}.` },
+            ],
+            max_tokens: 50,
+          });
+
+          const description = chatCompletion.choices[0].message.content.trim();
+
           setMessages([
+            { text: description, sender: 'bot', timestamp: new Date().toLocaleTimeString() },
             { text: `Hi, I am Petal-GPT. You have ${limit} free questions you can ask me about ${name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
           ]);
         } else {
           console.error('No such user!');
         }
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error fetching user data or generating description:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserData();
+    fetchUserDataAndDescription();
   }, [name, userId]);
 
   useEffect(() => {
@@ -104,7 +120,16 @@ const ImageDetail = () => {
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#0000ff" style={styles.loadingIndicator} />;
+    return (
+      <View style={styles.loadingContainer}>
+        <LottieView
+          source={platloadinganimation}
+          autoPlay
+          loop
+          style={styles.lottieAnimation}
+        />
+      </View>
+    );
   }
 
   return (
@@ -178,9 +203,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: viewportHeight * 0.02,
   },
-  loadingIndicator: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lottieAnimation: {
+    width: 130,
+    height: 130,
   },
   chatContainer: {
     flex: 1,
