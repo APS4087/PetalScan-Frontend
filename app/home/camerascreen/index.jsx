@@ -30,7 +30,7 @@ export default function CameraScreen() {
   const [resultLabel, setResultLabel] = useState('');
   const [zoom, setZoom] = useState(0);
   const [scale, setScale] = useState(1); // State for pinch scale
-  const [modalVisible, setModalVisible] = useState(false); // State for modal visibility
+ // const [modalVisible, setModalVisible] = useState(false); // State for modal visibility
   const [subscription, setSubscription] = useState(null);
 
   // Set the camera height to maintain the aspect ratio
@@ -43,7 +43,7 @@ export default function CameraScreen() {
       const { status: galleryStatus } = await MediaLibrary.requestPermissionsAsync();
       setHasGalleryPermission(galleryStatus === 'granted');
     })();
-
+  
     // Fetch the user's subscription details
     const fetchSubscription = async () => {
       if (user) {
@@ -55,7 +55,7 @@ export default function CameraScreen() {
         console.log(subscriptionDoc.data());
       }
     };
-
+  
     // Fetch the user's snap count
     const fetchSnapCount = async () => {
       if (user) {
@@ -67,23 +67,29 @@ export default function CameraScreen() {
         }
       }
     };
-
+  
     fetchSubscription();
     fetchSnapCount();
   }, [user]);
-
+  
   useEffect(() => {
     const checkAndResetFreeSnaps = async () => {
       const lastResetTime = await AsyncStorage.getItem('lastResetTime');
       const currentTime = new Date().getTime();
-
+  
       if (!lastResetTime || currentTime - parseInt(lastResetTime) > 24 * 60 * 60 * 1000) {
         // More than 24 hours have passed since the last reset
         setFreeSnaps(3);
         await AsyncStorage.setItem('lastResetTime', currentTime.toString());
+        await AsyncStorage.setItem('freeSnaps', '3');
+      } else {
+        const storedFreeSnaps = await AsyncStorage.getItem('freeSnaps');
+        if (storedFreeSnaps !== null) {
+          setFreeSnaps(parseInt(storedFreeSnaps));
+        }
       }
     };
-
+  
     checkAndResetFreeSnaps();
   }, []);
 
@@ -95,11 +101,13 @@ export default function CameraScreen() {
       // Use free snaps first
       await captureAndProcessImage();
       setFreeSnaps(freeSnaps - 1);
+      await AsyncStorage.setItem('freeSnaps', (freeSnaps - 1).toString());
     } else if (purchasedSnaps > 0) {
       // Use purchased snaps if no free snaps left
       await captureAndProcessImage();
-      setPurchasedSnaps(purchasedSnaps - 1);
-      updateSnapCount(purchasedSnaps - 1);
+      const newPurchasedSnaps = purchasedSnaps - 1;
+      setPurchasedSnaps(newPurchasedSnaps);
+      updateSnapCount(newPurchasedSnaps);
     } else {
       Alert.alert('Limit Reached', 'You have reached your daily limit. Purchase a snaps bundle for more!');
     }

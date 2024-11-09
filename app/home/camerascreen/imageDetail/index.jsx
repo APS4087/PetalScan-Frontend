@@ -6,6 +6,7 @@ import { getFirestore, doc, getDoc, collection } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../../../../firebaseConfig';
 import { useAuth } from '../../../../context/authContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: viewportWidth, height: viewportHeight } = Dimensions.get('window');
 
@@ -49,6 +50,24 @@ const ImageDetail = () => {
     fetchUserData();
   }, [name, userId]);
 
+  useEffect(() => {
+    const checkAndResetQuestionCount = async () => {
+      const lastResetTime = await AsyncStorage.getItem('lastQuestionResetTime');
+      const currentTime = new Date().getTime();
+      if (!lastResetTime || currentTime - parseInt(lastResetTime) > 24 * 60 * 60 * 1000) {
+        // More than 24 hours have passed since the last reset
+        setQuestionCount(0);
+        await AsyncStorage.setItem('lastQuestionResetTime', currentTime.toString());
+      } else {
+        const storedQuestionCount = await AsyncStorage.getItem('questionCount');
+        if (storedQuestionCount) {
+          setQuestionCount(parseInt(storedQuestionCount));
+        }
+      }
+    };
+    checkAndResetQuestionCount();
+  }, []);
+
   const handleSend = async () => {
     if (questionCount >= questionLimit) {
       alert(`You have reached the limit of ${questionLimit} questions.`);
@@ -59,6 +78,7 @@ const ImageDetail = () => {
     setMessages([...messages, userMessage]);
     setInputText('');
     setQuestionCount(questionCount + 1);
+    await AsyncStorage.setItem('questionCount', (questionCount + 1).toString());
 
     try {
       const chatCompletion = await openai.chat.completions.create({
