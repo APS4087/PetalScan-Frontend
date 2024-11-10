@@ -50,8 +50,8 @@ const ImageDetail = () => {
           const description = chatCompletion.choices[0].message.content.trim();
 
           setMessages([
-            { text: description, sender: 'bot', timestamp: new Date().toLocaleTimeString() },
-            { text: `Hi, I am Petal-GPT. You have ${limit} free questions you can ask me about ${name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
+            { text: description, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+            { text: `Hi, I am Petal-GPT. You have ${limit} free questions you can ask me about ${name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
           ]);
         } else {
           console.error('No such user!');
@@ -90,7 +90,7 @@ const ImageDetail = () => {
       return;
     }
 
-    const userMessage = { text: inputText, sender: 'user', timestamp: new Date().toLocaleTimeString() };
+    const userMessage = { text: inputText, sender: 'user', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
     setMessages([...messages, userMessage]);
     setInputText('');
     setQuestionCount(questionCount + 1);
@@ -106,7 +106,7 @@ const ImageDetail = () => {
         max_tokens: 150,
       });
 
-      const botMessage = { text: chatCompletion.choices[0].message.content.trim(), sender: 'bot', timestamp: new Date().toLocaleTimeString() };
+      const botMessage = { text: chatCompletion.choices[0].message.content.trim(), sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
       setMessages([...messages, userMessage, botMessage]);
       flatListRef.current.scrollToEnd({ animated: true });
     } catch (error) {
@@ -176,7 +176,7 @@ const ImageDetail = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#e0f7fa',
     padding: viewportWidth * 0.04,
   },
   backButton: {
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   backButtonText: {
-    color: '#007bff',
+    color: '#004d40',
     fontSize: viewportWidth * 0.04,
   },
   title: {
@@ -196,10 +196,11 @@ const styles = StyleSheet.create({
     marginTop: viewportHeight * 0.07,
     marginBottom: viewportHeight * 0.02,
     textAlign: 'center',
+    color: '#004d40',
   },
   questionCounter: {
     fontSize: viewportWidth * 0.04,
-    color: '#007bff',
+    color: '#004d40',
     textAlign: 'center',
     marginBottom: viewportHeight * 0.02,
   },
@@ -223,20 +224,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#004d40',
     padding: viewportWidth * 0.02,
   },
   input: {
     flex: 1,
     height: viewportHeight * 0.05,
-    borderColor: '#ddd',
+    borderColor: '#004d40',
     borderWidth: 1,
     borderRadius: viewportWidth * 0.05,
     paddingHorizontal: viewportWidth * 0.02,
     marginRight: viewportWidth * 0.02,
+    backgroundColor: '#ffffff',
   },
   sendButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#004d40',
     borderRadius: viewportWidth * 0.05,
     paddingVertical: viewportHeight * 0.01,
     paddingHorizontal: viewportWidth * 0.04,
@@ -257,22 +259,27 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#007aff',
+    backgroundColor: '#004d40',
     borderBottomRightRadius: 0,
+    maxWidth: '80%',
+    flexShrink: 1,
   },
   botMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e5e5ea',
+    backgroundColor: '#a7ffeb',
     borderBottomLeftRadius: 0,
+    maxWidth: '80%',
+    flexShrink: 1,
   },
   messageText: {
     color: '#000',
   },
   timestamp: {
     fontSize: viewportWidth * 0.03,
-    color: '#aaa',
+    color: '#004d40',
     marginTop: viewportHeight * 0.005,
     alignSelf: 'flex-end',
+    width: 35,
   },
 });
 

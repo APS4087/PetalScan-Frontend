@@ -52,7 +52,7 @@ const ArchitectureDetail = () => {
           const description = chatCompletion.choices[0].message.content.trim();
 
           setMessages([
-            { text: description, sender: 'bot', timestamp: new Date().toLocaleTimeString() },
+            { text: description, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
           ]);
 
           // Fetch user data
@@ -64,7 +64,7 @@ const ArchitectureDetail = () => {
             setQuestionLimit(limit);
             setMessages(prevMessages => [
               ...prevMessages,
-              { text: `Hi, I am Petal-GPT. You have ${limit} free questions you can ask me about ${architectureData.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
+              { text: `Hi, I am Petal-GPT. You have ${limit} free questions you can ask me about ${architectureData.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
             ]);
           } else {
             console.error('No such user!');
@@ -107,7 +107,11 @@ const ArchitectureDetail = () => {
       return;
     }
 
-    const userMessage = { text: inputText, sender: 'user', timestamp: new Date().toLocaleTimeString() };
+    const userMessage = { 
+      text: inputText, 
+      sender: 'user', 
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+    };
     setMessages([...messages, userMessage]);
     setInputText('');
     setQuestionCount(questionCount + 1);
@@ -123,7 +127,11 @@ const ArchitectureDetail = () => {
         max_tokens: 150,
       });
 
-      const botMessage = { text: chatCompletion.choices[0].message.content.trim(), sender: 'bot', timestamp: new Date().toLocaleTimeString() };
+      const botMessage = { 
+        text: chatCompletion.choices[0].message.content.trim(), 
+        sender: 'bot', 
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+      };
       setMessages([...messages, userMessage, botMessage]);
       flatListRef.current.scrollToEnd({ animated: true });
     } catch (error) {
@@ -237,7 +245,7 @@ const ArchitectureDetail = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#e0f7fa',
     padding: '4%',
     marginTop: '2%',
   },
@@ -309,6 +317,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
+    color: '#004d40',
   },
   loadingContainer: {
     flex: 1,
@@ -330,7 +339,7 @@ const styles = StyleSheet.create({
   },
   questionCounter: {
     fontSize: 16,
-    color: '#007bff',
+    color: '#004d40',
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -341,20 +350,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#004d40',
     padding: 10,
   },
   input: {
     flex: 1,
     height: 40,
-    borderColor: '#ddd',
+    borderColor: '#004d40',
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 10,
     marginRight: 10,
+    backgroundColor: '#ffffff',
   },
   sendButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#004d40',
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 15,
@@ -376,12 +386,12 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#007aff',
+    backgroundColor: '#004d40',
     borderBottomRightRadius: 0,
   },
   botMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e5e5ea',
+    backgroundColor: '#a7ffeb',
     borderBottomLeftRadius: 0,
   },
   messageText: {
@@ -389,9 +399,10 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 10,
-    color: '#aaa',
+    color: '#004d40',
     marginTop: 5,
     alignSelf: 'flex-end',
+    width: 35,
   },
 });
 
