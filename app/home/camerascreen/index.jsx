@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions, Image, Linking } from 'react-native';
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions, Image, Linking, Modal } from 'react-native';
 import { Camera } from 'expo-camera/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
@@ -12,10 +12,11 @@ import { db } from '../../../firebaseConfig';
 import { collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../../../context/authContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import CustomAlert from '../../../components/CustomAlert';
 
 const { width, height } = Dimensions.get('window');
 const GOOGLE_CLOUD_RUN_URL = 'https://petalscan-img-129264674726.asia-southeast1.run.app';
+const HOME_LOCAL_SERVER_URL = 'http://192.168.10.218:8000';
 
 export default function CameraScreen() {
   const router = useRouter();
@@ -30,8 +31,9 @@ export default function CameraScreen() {
   const [resultLabel, setResultLabel] = useState('');
   const [zoom, setZoom] = useState(0);
   const [scale, setScale] = useState(1); // State for pinch scale
- // const [modalVisible, setModalVisible] = useState(false); // State for modal visibility
   const [subscription, setSubscription] = useState(null);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
 
   // Set the camera height to maintain the aspect ratio
   const cameraHeight = width * (4 / 3); // 4:3 aspect ratio for the camera
@@ -109,7 +111,8 @@ export default function CameraScreen() {
       setPurchasedSnaps(newPurchasedSnaps);
       updateSnapCount(newPurchasedSnaps);
     } else {
-      Alert.alert('Limit Reached', 'You have reached your daily limit. Purchase a snaps bundle for more!');
+      setAlertMessage('You have reached your daily limit. Purchase a snaps bundle for more!');
+      setAlertVisible(true);
     }
   };
 
@@ -149,6 +152,9 @@ export default function CameraScreen() {
       type: 'image/jpeg',
     });
   
+    let snapReduced = false;
+    let data = null;
+  
     try {
       const response = await fetch(`${GOOGLE_CLOUD_RUN_URL}/predict/`, {
         method: 'POST',
@@ -162,21 +168,50 @@ export default function CameraScreen() {
         throw new Error('Network response was not ok');
       }
   
-      const data = await response.json();
+      data = await response.json();
       if (data && data.predicted_label) {
         setResultLabel(data.predicted_label);
+        // Update snap count only if the detection is successful
+        if (!(subscription && subscription.plan === 'Monthly' && subscription.status === 'active')) {
+          if (freeSnaps > 0) {
+            const newFreeSnaps = freeSnaps - 1;
+            setFreeSnaps(newFreeSnaps);
+            await AsyncStorage.setItem('freeSnaps', newFreeSnaps.toString());
+            snapReduced = true;
+          } else if (purchasedSnaps > 0) {
+            const newPurchasedSnaps = purchasedSnaps - 1;
+            setPurchasedSnaps(newPurchasedSnaps);
+            updateSnapCount(newPurchasedSnaps);
+            snapReduced = true;
+          }
+        }
       } else {
-        Alert.alert('Error', 'No valid prediction returned from the server.');
+        setAlertMessage('Please make sure to capture an image with either a flower, plant or architecture to get a prediction.');
+        setAlertVisible(true);
       }
     } catch (error) {
       console.error('Error in image detection:', error);
-      Alert.alert('Error', 'There was an error processing your image.');
+      setAlertMessage('There was an error processing your image. Please check your connection and try again.');
+      setAlertVisible(true);
     } finally {
+      if (!data || !data.predicted_label) {
+        // Redeem back the snaps if there was an error or no prediction
+        if (snapReduced) {
+          if (freeSnaps < 3) {
+            const newFreeSnaps = freeSnaps + 1;
+            setFreeSnaps(newFreeSnaps);
+            await AsyncStorage.setItem('freeSnaps', newFreeSnaps.toString());
+          } else if (purchasedSnaps < 20) {
+            const newPurchasedSnaps = purchasedSnaps + 1;
+            setPurchasedSnaps(newPurchasedSnaps);
+            updateSnapCount(newPurchasedSnaps);
+          }
+        }
+      }
       setLoading(false); // End loading
       console.log('Loading ended'); // Debugging log
     }
   };
-
   const updateSnapCount = async (newCount) => {
     if (user) {
       const userRef = doc(collection(db, 'users'), user.uid);
@@ -245,7 +280,6 @@ export default function CameraScreen() {
     const url = `https://www.google.com/search?q=${query}`;
     Linking.openURL(url);
   };
-
 
   const totalSnaps = freeSnaps + purchasedSnaps;
 
@@ -348,9 +382,15 @@ export default function CameraScreen() {
           </TouchableOpacity>
         )}
       </SafeAreaView>
+      <CustomAlert
+        visible={alertVisible}
+        message={alertMessage}
+        onClose={() => setAlertVisible(false)}
+      />
     </GestureHandlerRootView>
   );
 }
+
 
 
 // Styles
