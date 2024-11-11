@@ -43,7 +43,7 @@ const FlowerDetail = () => {
           const chatCompletion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: `You are a helpful assistant. Provide a short description for the following flower: ${flowerData.name} from Sinagpore Botanic Garden` },
+              { role: 'system', content: `You are a helpful assistant. Provide a short description for the following flower: ${flowerData.name} from Singapore Botanic Garden. Only respond to questions related to this flower detail and politely decline any off-topic questions.` },
             ],
             max_tokens: 50,
           });
@@ -77,7 +77,7 @@ const FlowerDetail = () => {
           const limit = userData.userType === 'premium' ? 20 : 5;
           setQuestionLimit(limit);
           setMessages([
-            { text: `Hi, I am Petal-GPT. You have ${limit} free questions you can ask me about ${flower?.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
+            { text: `Hi, I am Petal-GPT. You have ${limit} daily free questions you can ask me about ${flower?.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
           ]);
         } else {
           console.error('No such user!');
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
   },
   questionCounter: {
     fontSize: 16,
-    color: '#007bff',
+    color: '#004d40',
     textAlign: 'center',
     marginBottom: 10,
   },
@@ -348,20 +348,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#004d40',
     padding: 10,
   },
   input: {
     flex: 1,
     height: 40,
-    borderColor: '#ddd',
+    borderColor: '#004d40',
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 10,
     marginRight: 10,
+    backgroundColor: '#ffffff',
   },
   sendButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#004d40',
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 15,
@@ -383,12 +384,12 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#007aff',
+    backgroundColor: '#4CAF50', // Nature-themed color for user message (Green)
     borderBottomRightRadius: 0,
   },
   botMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e5e5ea',
+    backgroundColor: '#8FBC8F', // Nature-themed color for bot message (Dark Sea Green)
     borderBottomLeftRadius: 0,
   },
   messageText: {

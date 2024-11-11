@@ -22,7 +22,7 @@ const ArchitectureDetail = () => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [questionCount, setQuestionCount] = useState(0);
-  const [questionLimit, setQuestionLimit] = useState(5); // Default to 5
+  const [questionLimit, setQuestionLimit] = useState(0); 
   const flatListRef = useRef(null);
   const { user } = useAuth();
 
@@ -44,7 +44,7 @@ const ArchitectureDetail = () => {
           const chatCompletion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: `You are a helpful assistant. Provide a short description for the following architecture: ${architectureData.name}.` },
+              { role: 'system', content: `You are a helpful assistant. Provide a short description for the following architecture: ${architectureData.name} from Singapore Botanic Garden. Only respond to questions related to this architecture detail. If asked an off-topic question, respond with "I'm sorry, I can only answer questions related to the architecture detail from Singapore Botanic Garden."` },
             ],
             max_tokens: 50,
           });
@@ -64,7 +64,7 @@ const ArchitectureDetail = () => {
             setQuestionLimit(limit);
             setMessages(prevMessages => [
               ...prevMessages,
-              { text: `Hi, I am Petal-GPT. You have ${limit} free questions you can ask me about ${architectureData.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+              { text: `Hi, I am Petal-GPT. You have ${limit} daily free questions you can ask me about ${architectureData.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
             ]);
           } else {
             console.error('No such user!');
@@ -245,7 +245,6 @@ const ArchitectureDetail = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#e0f7fa',
     padding: '4%',
     marginTop: '2%',
   },
@@ -317,7 +316,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    color: '#004d40',
   },
   loadingContainer: {
     flex: 1,
@@ -386,12 +384,12 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#004d40',
+    backgroundColor: '#4CAF50', // Nature-themed color for user message (Green)
     borderBottomRightRadius: 0,
   },
   botMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#a7ffeb',
+    backgroundColor: '#8FBC8F', // Nature-themed color for bot message (Dark Sea Green)
     borderBottomLeftRadius: 0,
   },
   messageText: {

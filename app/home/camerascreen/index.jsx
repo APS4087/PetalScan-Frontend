@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions, Image, Linking, Modal } from 'react-native';
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions, Image, Linking, Share } from 'react-native';
 import { Camera } from 'expo-camera/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';;
 import * as ImagePicker from 'expo-image-picker';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
@@ -242,12 +243,37 @@ export default function CameraScreen() {
   const closeModal = () => {
     setModalVisible(false); // Close modal
   };
-
-  const shareImage = async () => {
+  
+  const shareImage = async (identifiedName) => {
     if (selectedImage) {
-      await Sharing.shareAsync(selectedImage);
+      try {
+        // Define a path for the temporary image file
+        const tempImageUri = `${FileSystem.cacheDirectory}temp_image.jpg`;
+  
+        // Copy the selected image to the temporary path
+        await FileSystem.copyAsync({
+          from: selectedImage,
+          to: tempImageUri,
+        });
+  
+        // Check if the device supports sharing files
+        if (!(await Sharing.isAvailableAsync())) {
+          alert("Sharing is not available on this device");
+          return;
+        }
+  
+        // Share the image along with a message
+        await Sharing.shareAsync(tempImageUri, {
+          dialogTitle: 'Share your identification',
+          mimeType: 'image/jpeg',
+        });
+  
+      } catch (error) {
+        console.error('Error sharing image:', error);
+      }
     }
   };
+  
 
   const navigateToPayment = () => {
     router.push('/payment'); // Adjust the route as needed
@@ -277,7 +303,7 @@ export default function CameraScreen() {
   // Function to search on Google
   const searchOnGoogle = () => {
     const query = encodeURIComponent(resultLabel);
-    const url = `https://www.google.com/search?q=${query}`;
+    const url = `https://www.google.com/search?q=${query}+in+botanic+garden`;
     Linking.openURL(url);
   };
 
@@ -337,7 +363,7 @@ export default function CameraScreen() {
                   <Icon name="save-alt" size={25} color="white" />
                   <Text style={styles.optionText}>Save</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={shareImage} style={styles.iconButton}>
+                <TouchableOpacity onPress={() => shareImage(resultLabel)} style={styles.iconButton}>
                   <Icon name="share" size={25} color="white" />
                   <Text style={styles.optionText}>Share</Text>
                 </TouchableOpacity>

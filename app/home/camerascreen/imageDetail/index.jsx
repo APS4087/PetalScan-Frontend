@@ -12,6 +12,11 @@ import platloadinganimation from '../../../../assets/animations/plantLoadingAnim
 
 const { width: viewportWidth, height: viewportHeight } = Dimensions.get('window');
 
+// Utility function to convert string to capital case
+const toCapitalCase = (str) => {
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
 const ImageDetail = () => {
   const router = useRouter();
   const { name, userId } = useLocalSearchParams(); // Assuming userId is passed as a parameter
@@ -42,7 +47,7 @@ const ImageDetail = () => {
           const chatCompletion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: `You are a helpful assistant. Provide a short description for the following image detail: ${name}.` },
+              { role: 'system', content: `You are a helpful assistant. Provide a short description for the following image detail: ${name}. Only respond to questions related to this image detail and politely decline any off-topic questions.` },
             ],
             max_tokens: 50,
           });
@@ -51,7 +56,7 @@ const ImageDetail = () => {
 
           setMessages([
             { text: description, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
-            { text: `Hi, I am Petal-GPT. You have ${limit} free questions you can ask me about ${name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+            { text: `Hi, I am Petal-GPT. You have ${limit} daily free questions you can ask me about ${name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
           ]);
         } else {
           console.error('No such user!');
@@ -139,7 +144,7 @@ const ImageDetail = () => {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()} accessibilityLabel="Go back">
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>{name}</Text>
+        <Text style={styles.title}>{toCapitalCase(name)}</Text>
         <Text style={styles.questionCounter}>Questions Left: {questionLimit - questionCount}</Text>
         <View style={styles.chatContainer}>
           <FlatList
@@ -176,7 +181,7 @@ const ImageDetail = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#e0f7fa',
+    //backgroundColor: '#e0f7fa',
     padding: viewportWidth * 0.04,
   },
   backButton: {
@@ -259,14 +264,14 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#004d40',
+    backgroundColor: '#4CAF50', // Nature-themed color for user message (Green)
     borderBottomRightRadius: 0,
     maxWidth: '80%',
     flexShrink: 1,
   },
   botMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#a7ffeb',
+    backgroundColor: '#8FBC8F', // Nature-themed color for bot message (Dark Sea Green)
     borderBottomLeftRadius: 0,
     maxWidth: '80%',
     flexShrink: 1,

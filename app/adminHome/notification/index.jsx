@@ -5,6 +5,8 @@ import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons'; // Import MaterialIcons
 import images from '../../../components/data';
 import AdminNavbar from '../../../components/AdminNavbar';
+import DateTimePicker from '@react-native-community/datetimepicker'; // Import DateTimePicker
+import { format, parse } from 'date-fns'; // Import date-fns for date parsing and formatting
 
 const LOCAL_MACHINE_IP = 'http://192.168.239.197:8000'; 
 const HOME_WIFI = 'http://192.168.10.218:8000';
@@ -18,6 +20,8 @@ export default function AdminNotificationScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredEvents, setFilteredEvents] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date()); // State for selected date
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false); // State for date picker visibility
 
   // Fetch events from the backend
   useEffect(() => {
@@ -31,6 +35,8 @@ export default function AdminNotificationScreen({ navigation }) {
         console.log(data);
         // Add a seen property to each event
         const eventsWithSeen = data.upcoming_events.map(event => ({ ...event, seen: false }));
+        // Sort events by date in ascending order
+        eventsWithSeen.sort((a, b) => new Date(a.date) - new Date(b.date));
         setEvents(eventsWithSeen || []); // Ensure events is always an array
         setFilteredEvents(eventsWithSeen || []); // Initialize filtered events
       } catch (error) {
@@ -70,6 +76,24 @@ export default function AdminNotificationScreen({ navigation }) {
     }
   };
 
+  // Handler for date change
+  const handleDateChange = (event, date) => {
+    setIsDatePickerVisible(false); // Hide date picker after selecting a date
+    if (date) {
+      setSelectedDate(date);
+      const filtered = events.filter(event =>
+        parse(event.date, 'dd MMM yyyy', new Date()).toDateString() === date.toDateString()
+      );
+      setFilteredEvents(filtered);
+    }
+  };
+
+  // Handler to clear the date filter
+  const clearDateFilter = () => {
+    setSelectedDate(new Date());
+    setFilteredEvents(events);
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -103,15 +127,25 @@ export default function AdminNotificationScreen({ navigation }) {
             />
           </View>
 
-          {/* Filter Buttons */}
-          <View style={styles.filterContainer}>
-            <TouchableOpacity style={styles.filterButton}>
-              <Text style={styles.filterText}>Latest</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.filterButton}>
-              <Text style={styles.filterText}>Oldest</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Date Picker Button */}
+          <TouchableOpacity style={styles.datePickerButton} onPress={() => setIsDatePickerVisible(true)}>
+            <Text style={styles.datePickerText}>Select Date</Text>
+          </TouchableOpacity>
+
+          {/* Date Picker Modal */}
+          {isDatePickerVisible && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+            />
+          )}
+
+          {/* Clear Filter Button */}
+          <TouchableOpacity style={styles.clearFilterButton} onPress={clearDateFilter}>
+            <Text style={styles.clearFilterText}>Clear Filter</Text>
+          </TouchableOpacity>
 
           {/* Add Notification Button with Material Icon */}
           <TouchableOpacity style={styles.blankContainer} onPress={() => alert('Add feature is still under development')}>
@@ -128,7 +162,7 @@ export default function AdminNotificationScreen({ navigation }) {
             >
               <View style={styles.notificationTopContainer}>
                 <Text style={styles.smallNotification}>{event.seen ? 'Seen' : 'New'}</Text>
-                <Text style={styles.notificationDate}>{event.date}</Text>
+                <Text style={styles.notificationDate}>{format(parse(event.date, 'dd MMM yyyy', new Date()), 'dd MMM yyyy')}</Text>
               </View>
               <View style={styles.notificationContent}>
                 <Text style={styles.notificationTitle}>{event.title}</Text>
@@ -194,13 +228,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
   },
-  filterContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  filterButton: {
-    flex: 0.48,
+  datePickerButton: {
     backgroundColor: 'white',
     paddingVertical: 8,
     borderRadius: 18,
@@ -208,8 +236,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderColor: '#959595',
     borderWidth: 1,
+    marginBottom: 20,
   },
-  filterText: {
+  datePickerText: {
+    color: 'black',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  clearFilterButton: {
+    backgroundColor: 'white',
+    paddingVertical: 8,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderColor: '#959595',
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  clearFilterText: {
     color: 'black',
     fontWeight: 'bold',
     fontSize: 14,

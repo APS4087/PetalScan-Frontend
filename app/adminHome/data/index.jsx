@@ -88,6 +88,9 @@ function Database({ navigation }) {
     <View style={styles.container}>
       <ScrollView style={styles.content}>
 
+        {/* Database Management Title */}
+        <Text style={styles.mainTitle}>Database Management</Text>
+
         {/* Back Button */}
         <TouchableOpacity onPress={() => router.push('/adminHome')} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={28} color="black" />
@@ -157,8 +160,15 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: height * 0.025,
   },
+  mainTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
   backButton: {
-    marginTop: 50,
+    marginTop: 10,
     marginLeft: 10,
   },
   searchBarContainer: {

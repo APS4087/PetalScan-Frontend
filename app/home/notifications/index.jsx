@@ -4,6 +4,9 @@ import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import images from '../../../components/data';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker'; // Import DateTimePicker
+import { format, parse } from 'date-fns'; // Import date-fns for date parsing and formatting
+import UserNavbar from '../../../components/UserNavbar';
 
 const LOCAL_MACHINE_IP = 'http://192.168.239.197:8000'; 
 const HOME_WIFI = 'http://192.168.10.218:8000';
@@ -18,6 +21,8 @@ export default function Notifications() {
   const [events, setEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredEvents, setFilteredEvents] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date()); // State for selected date
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false); // State for date picker visibility
 
   // Fetch events from the backend
   const fetchEvents = async () => {
@@ -30,6 +35,8 @@ export default function Notifications() {
       console.log(data);
       // Add a seen property to each event
       const eventsWithSeen = data.upcoming_events.map(event => ({ ...event, seen: false }));
+      // Sort events by date in ascending order
+      eventsWithSeen.sort((a, b) => new Date(a.date) - new Date(b.date));
       setEvents(eventsWithSeen || []); // Ensure events is always an array
       setFilteredEvents(eventsWithSeen || []); // Initialize filtered events
     } catch (error) {
@@ -75,6 +82,24 @@ export default function Notifications() {
     }
   };
 
+  // Handler for date change
+  const handleDateChange = (event, date) => {
+    setIsDatePickerVisible(false); // Hide date picker after selecting a date
+    if (date) {
+      setSelectedDate(date);
+      const filtered = events.filter(event =>
+        parse(event.date, 'dd MMM yyyy', new Date()).toDateString() === date.toDateString()
+      );
+      setFilteredEvents(filtered);
+    }
+  };
+
+  // Handler to clear the date filter
+  const clearDateFilter = () => {
+    setSelectedDate(new Date());
+    setFilteredEvents(events);
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -89,54 +114,87 @@ export default function Notifications() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Back button to navigate to the previous screen */}
-      <TouchableOpacity style={styles.logo} onPress={() => router.back()}>
-        <Image source={images.backArrowIcon} style={styles.arrow} />
-      </TouchableOpacity>
+    <View style={styles.screenContainer}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.notificationContainer}>
+          <Text style={styles.sectionTitle}>Notification</Text>
 
-      {/* Search bar */}
-      <View style={styles.searchBarContainer}>
-        <Image source={images.searchIcon} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchBar}
-          placeholder="Search notifications..."
-          placeholderTextColor="#888"
-          value={searchQuery}
-          onChangeText={handleSearch}
-        />
-      </View>
+          {/* Search Bar with Icon */}
+          <View style={styles.searchContainer}>
+            <Image
+              source={images.searchIcon}
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={styles.searchBar}
+              placeholder="Search"
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+          </View>
 
-      <View style={styles.notificationContainer}>
-        <Text style={styles.sectionTitle}>Latest Notifications</Text>
-        {filteredEvents.map((event, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[styles.notificationItem, event.seen && styles.seenNotification]}
-            onPress={() => handleNotificationClick(index, event.link)}  // Navigate to the event link
-          >
-            <View style={styles.notificationTopContainer}>
-              <Text style={styles.smallNotification}>{event.seen ? 'Seen' : 'New'}</Text>
-              <Text style={styles.notificationDate}>{event.date}</Text>
-            </View>
-            <View style={styles.notificationContent}>
-              <Text style={styles.notificationTitle}>{event.title}</Text>
-              <Text style={styles.notificationDescription}>Tap for more description</Text>
-            </View>
+          {/* Date Picker Button */}
+          <TouchableOpacity style={styles.datePickerButton} onPress={() => setIsDatePickerVisible(true)}>
+            <Text style={styles.datePickerText}>Select Date</Text>
           </TouchableOpacity>
-        ))}
+
+          {/* Date Picker Modal */}
+          {isDatePickerVisible && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+            />
+          )}
+
+          {/* Clear Filter Button */}
+          <TouchableOpacity style={styles.clearFilterButton} onPress={clearDateFilter}>
+            <Text style={styles.clearFilterText}>Clear Filter</Text>
+          </TouchableOpacity>
+
+          {/* Notification Items */}
+          {filteredEvents.map((event, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[styles.notificationItem, event.seen && styles.seenNotification]}
+              onPress={() => handleNotificationClick(index, event.link)}  // Navigate to the event link
+            >
+              <View style={styles.notificationTopContainer}>
+                <Text style={styles.smallNotification}>{event.seen ? 'Seen' : 'New'}</Text>
+                <Text style={styles.notificationDate}>{format(parse(event.date, 'dd MMM yyyy', new Date()), 'dd MMM yyyy')}</Text>
+              </View>
+              <View style={styles.notificationContent}>
+                <Text style={styles.notificationTitle}>{event.title}</Text>
+                <Text style={styles.notificationDescription}>Tap for more description</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Navigation Bar at the Bottom */}
+      <View style={styles.navibarContainer}>
+        <UserNavbar/>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
     paddingHorizontal: viewportWidth * 0.05,
     paddingTop: viewportHeight * 0.03, 
     marginBottom: viewportHeight * 0.03,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 70, // Ensure content does not overlap with the Navibar
   },
   loadingContainer: {
     flex: 1,
@@ -151,19 +209,12 @@ const styles = StyleSheet.create({
     marginBottom: viewportHeight * 0.01,
     marginTop: viewportHeight * 0.02,
   },
-  logo: {
-    height: viewportHeight * 0.04,
-    width: viewportHeight * 0.04,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: viewportHeight * 0.05, // Increased marginTop to move the back arrow down
+  sectionTitle: {
+    fontSize: viewportWidth * 0.06,
+    fontWeight: 'bold',
+    marginBottom: viewportHeight * 0.02,
   },
-  arrow: {
-    height: '100%',
-    width: '100%',
-    resizeMode: 'contain',
-  },
-  searchBarContainer: {
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F7F8F9',
@@ -184,10 +235,35 @@ const styles = StyleSheet.create({
     padding: viewportWidth * 0.02,
     fontSize: viewportWidth * 0.04,
   },
-  sectionTitle: {
-    fontSize: viewportWidth * 0.06,
+  datePickerButton: {
+    backgroundColor: 'white',
+    paddingVertical: 8,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderColor: '#959595',
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  datePickerText: {
+    color: 'black',
     fontWeight: 'bold',
-    marginBottom: viewportHeight * 0.02,
+    fontSize: 14,
+  },
+  clearFilterButton: {
+    backgroundColor: 'white',
+    paddingVertical: 8,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderColor: '#959595',
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  clearFilterText: {
+    color: 'black',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   notificationItem: {
     padding: viewportWidth * 0.04,
@@ -229,5 +305,10 @@ const styles = StyleSheet.create({
     fontSize: viewportWidth * 0.035,
     color: '#333333',
   },
+  navibarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
 });
-

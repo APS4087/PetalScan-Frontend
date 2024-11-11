@@ -6,6 +6,7 @@ import { useAuth } from "../../../context/authContext";
 import { auth, db } from "../../../firebaseConfig";
 import { Ionicons } from '@expo/vector-icons';
 import { updateDoc, doc } from 'firebase/firestore';
+import UserNavbar from '../../../components/UserNavbar'; // Import UserNavbar
 
 const { width, height } = Dimensions.get('window');
 
@@ -43,74 +44,70 @@ const ProfilePage = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Back button */}
-      <TouchableOpacity style={styles.logo} onPress={() => router.push('/home')}>
-        <Image source={images.backArrowIcon} style={styles.arrow} />
-      </TouchableOpacity>
+    <View style={styles.screenContainer}>
+      <ScrollView style={styles.container}>
+        <Text style={styles.title}>Profile</Text>
 
-      <Text style={styles.title}>Profile</Text>
+        {/* Profile Picture */}
+        <Image
+          source={{ uri: user?.profileImageUrl || (username ? `https://api.multiavatar.com/${username}.png` : 'https://api.multiavatar.com/bill.png') }}
+          style={styles.profileImage}
+        />
 
-      {/* Profile Picture */}
-      <Image
-        source={{ uri: user?.profileImageUrl || (username ? `https://api.multiavatar.com/${username}.png` : 'https://api.multiavatar.com/bill.png') }}
-        style={styles.profileImage}
-      />
+        {/* Username and Email */}
+        <Text style={styles.username}>{username || 'Loading...'}</Text>
+        <Text style={styles.email}>{user?.email || 'Loading...'}</Text>
 
-      {/* Username and Email */}
-      <Text style={styles.username}>{username || 'Loading...'}</Text>
-      <Text style={styles.email}>{user?.email || 'Loading...'}</Text>
-
-      {/* Profile Options */}
-      <View style={styles.optionsContainer}>
-        <TouchableOpacity style={styles.option} onPress={() => router.push('/home/profile/updateProfile')}>
-          <View style={styles.optionContent}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="person-outline" size={24} color="#0601B4" />
+        {/* Profile Options */}
+        <View style={styles.optionsContainer}>
+          <TouchableOpacity style={styles.option} onPress={() => router.push('/home/profile/updateProfile')}>
+            <View style={styles.optionContent}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="person-outline" size={24} color="#0601B4" />
+              </View>
+              <Text style={styles.optionText}>Your profile</Text>
             </View>
-            <Text style={styles.optionText}>Your profile</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="#6e6e6e" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.option} onPress={handleLogout}>
-          <View style={styles.optionContent}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="log-out-outline" size={24} color="#0601B4" />
+            <Ionicons name="chevron-forward" size={24} color="#6e6e6e" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.option} onPress={handleLogout}>
+            <View style={styles.optionContent}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="log-out-outline" size={24} color="#0601B4" />
+              </View>
+              <Text style={styles.optionText}>Log out</Text>
             </View>
-            <Text style={styles.optionText}>Log out</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="#6e6e6e" />
+            <Ionicons name="chevron-forward" size={24} color="#6e6e6e" />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.premiumButton} onPress={() => router.push('/payment')}>
+          <Text style={styles.premiumText}>Upgrade to premium</Text>
         </TouchableOpacity>
+
+        {/* Delete Account Button */}
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDeactivateAccount}>
+          <Text style={styles.deleteText}>Deactivate Account</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* Navigation Bar at the Bottom */}
+      <View style={styles.navibarContainer}>
+        <UserNavbar/>
       </View>
-
-      <TouchableOpacity style={styles.premiumButton} onPress={() => router.push('/payment')}>
-        <Text style={styles.premiumText}>Upgrade to premium</Text>
-      </TouchableOpacity>
-
-      {/* Delete Account Button */}
-      <TouchableOpacity style={styles.deleteButton} onPress={handleDeactivateAccount}>
-        <Text style={styles.deleteText}>Deactivate Account</Text>
-      </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
     paddingTop: height * 0.05,
     paddingHorizontal: width * 0.05,
-  },
-  logo: {
-    position: 'absolute',
-    top: height * 0.03,
-    left: width * 0.03,
-  },
-  arrow: {
-    width: width * 0.07,
-    height: width * 0.07,
   },
   profileImage: {
     width: width * 0.3,
@@ -198,6 +195,12 @@ const styles = StyleSheet.create({
     fontSize: width * 0.043,
     width: '54%',
     color: '#fff',
+  },
+  navibarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
 });
 

@@ -22,7 +22,7 @@ function UserNavbar() {
 
   return (
     <View style={styles.navbar}>
-      <TouchableOpacity>
+      <TouchableOpacity onPress={() => router.push("/home")}>
         <View style={styles.navItem}>
           <Image source={images.homeIcon} style={styles.icon} />
           <Text style={styles.label}>Home</Text>
