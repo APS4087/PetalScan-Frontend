@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, TextInput, Linking } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, TextInput, Linking, Dimensions } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
@@ -14,6 +14,8 @@ const AWS_SERVER_URL = 'http://3.27.248.187:8000';
 const faishal = 'http://172.20.10.3:8000';
 const GOOGLE_CLOUD_RUN_URL = 'https://petalscan-img-129264674726.asia-southeast1.run.app';
 
+const { width: viewportWidth, height: viewportHeight } = Dimensions.get('window');
+
 export default function AdminNotificationScreen({ navigation }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -24,56 +26,48 @@ export default function AdminNotificationScreen({ navigation }) {
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false); // State for date picker visibility
 
   // Fetch events from the backend
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const response = await fetch(`${GOOGLE_CLOUD_RUN_URL}/events/`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log(data);
-        // Add a seen property to each event
-        const eventsWithSeen = data.upcoming_events.map(event => ({ ...event, seen: false }));
-        // Sort events by date in ascending order
-        eventsWithSeen.sort((a, b) => new Date(a.date) - new Date(b.date));
-        setEvents(eventsWithSeen || []); // Ensure events is always an array
-        setFilteredEvents(eventsWithSeen || []); // Initialize filtered events
-      } catch (error) {
-        console.error('Error fetching events:', error);
-        setEvents([]); // Set events to an empty array on error
-        setFilteredEvents([]); // Set filtered events to an empty array on error
-      } finally {
-        setLoading(false);
+  const fetchEvents = async () => {
+    try {
+      const response = await fetch(`${GOOGLE_CLOUD_RUN_URL}/events/`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
+      const data = await response.json();
+      console.log(data);
+      // Add a seen property to each event
+      const eventsWithSeen = data.upcoming_events.map(event => ({ ...event, seen: false }));
+      // Sort events by date in ascending order
+      eventsWithSeen.sort((a, b) => new Date(a.date) - new Date(b.date));
+      setEvents(eventsWithSeen || []); // Ensure events is always an array
+      setFilteredEvents(eventsWithSeen || []); // Initialize filtered events
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      setEvents([]); // Set events to an empty array on error
+      setFilteredEvents([]); // Set filtered events to an empty array on error
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchEvents();
   }, []);
 
-  // Handler for notification click
-  const handleNotificationClick = (index, link) => {
-    // Mark the notification as seen
-    const updatedEvents = [...events];
-    updatedEvents[index].seen = true;
-    setEvents(updatedEvents);
-    setFilteredEvents(updatedEvents);
-
-    // Open the link in the default browser
-    Linking.openURL(link);
+  // Function to filter events based on search query and selected date
+  const filterEvents = (query, date) => {
+    const filtered = events.filter(event => {
+      const matchesSearchQuery = query ? event.title.toLowerCase().includes(query.toLowerCase()) ||
+        event.description.toLowerCase().includes(query.toLowerCase()) : true;
+      const matchesDate = date ? parse(event.date, 'dd MMM yyyy', new Date()).toDateString() === date.toDateString() : true;
+      return matchesSearchQuery && matchesDate;
+    });
+    setFilteredEvents(filtered);
   };
 
-  // Handler for search query change
-  const handleSearchQueryChange = (query) => {
+  // Handler for search input change
+  const handleSearch = (query) => {
     setSearchQuery(query);
-    if (query === '') {
-      setFilteredEvents(events);
-    } else {
-      const filtered = events.filter(event =>
-        event.title.toLowerCase().includes(query.toLowerCase())
-      );
-      setFilteredEvents(filtered);
-    }
+    filterEvents(query, selectedDate);
   };
 
   // Handler for date change
@@ -81,18 +75,35 @@ export default function AdminNotificationScreen({ navigation }) {
     setIsDatePickerVisible(false); // Hide date picker after selecting a date
     if (date) {
       setSelectedDate(date);
-      const filtered = events.filter(event =>
-        parse(event.date, 'dd MMM yyyy', new Date()).toDateString() === date.toDateString()
-      );
-      setFilteredEvents(filtered);
+      filterEvents(searchQuery, date);
     }
   };
 
   // Handler to clear the date filter
   const clearDateFilter = () => {
-    setSelectedDate(new Date());
-    setFilteredEvents(events);
+    setSelectedDate(null);
+    filterEvents(searchQuery, null);
   };
+
+  // Handler for notification click
+  const handleNotificationClick = (index, link) => {
+    // Mark the notification as seen
+    const updatedEvents = [...events];
+    updatedEvents[index].seen = true;
+    setEvents(updatedEvents);
+
+    // Update filtered events
+    const updatedFilteredEvents = [...filteredEvents];
+    updatedFilteredEvents[index].seen = true;
+    setFilteredEvents(updatedFilteredEvents);
+
+    // Open the link in the default browser
+    Linking.openURL(link);
+  };
+
+  useEffect(() => {
+    filterEvents(searchQuery, selectedDate);
+  }, [searchQuery, selectedDate]);
 
   if (loading) {
     return (
@@ -123,7 +134,7 @@ export default function AdminNotificationScreen({ navigation }) {
               style={styles.searchBar}
               placeholder="Search"
               value={searchQuery}
-              onChangeText={handleSearchQueryChange}
+              onChangeText={handleSearch}
             />
           </View>
 
@@ -135,7 +146,7 @@ export default function AdminNotificationScreen({ navigation }) {
           {/* Date Picker Modal */}
           {isDatePickerVisible && (
             <DateTimePicker
-              value={selectedDate}
+              value={selectedDate || new Date()}
               mode="date"
               display="default"
               onChange={handleDateChange}
@@ -188,45 +199,52 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    padding: 30,
-    marginBottom: 30,
+    paddingHorizontal: viewportWidth * 0.05,
+    paddingTop: viewportHeight * 0.03, 
+    marginBottom: viewportHeight * 0.03,
   },
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 70, // Ensure content does not overlap with the Navibar
   },
-  notificationContainer: {
-    marginBottom: 10,
-    marginTop: -60,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  notificationBottonContainer: {
-    marginBottom: 10,
+  lottie: {
+    width: viewportWidth * 0.75,
+    height: viewportWidth * 0.75,
+  },
+  notificationContainer: {
+    marginBottom: viewportHeight * 0.01,
+    marginTop: viewportHeight * 0.02,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: viewportWidth * 0.06,
     fontWeight: 'bold',
-    marginBottom: 16,
-    marginTop: "30%",
+    marginBottom: viewportHeight * 0.02,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 20,
-    borderColor: '#959595',
+    backgroundColor: '#F7F8F9',
+    height: viewportHeight * 0.05, 
+    width: viewportWidth * 0.9,
+    borderRadius: 20,
+    marginVertical: viewportHeight * 0.01,
+    borderColor: '#cccccc',
     borderWidth: 1,
   },
   searchIcon: {
-    width: 15,
-    height: 15,
-    marginLeft: 10,
-    marginRight: 10,
+    width: viewportWidth * 0.04,
+    height: viewportWidth * 0.04,
+    marginLeft: viewportWidth * 0.05,
   },
   searchBar: {
     flex: 1,
-    fontSize: 15,
+    padding: viewportWidth * 0.02,
+    fontSize: viewportWidth * 0.04,
   },
   datePickerButton: {
     backgroundColor: 'white',
@@ -276,12 +294,12 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   notificationItem: {
-    padding: 12,
+    padding: viewportWidth * 0.04,
     backgroundColor: '#f9f9f9',
-    borderRadius: 15,
-    marginBottom: 30,
-    elevation: 2,
-    shadowColor: '#000',
+    borderRadius: viewportWidth * 0.04,
+    marginBottom: viewportHeight * 0.02,
+    elevation: 2, // Adds shadow for Android
+    shadowColor: '#000', // Adds shadow for iOS
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -292,26 +310,27 @@ const styles = StyleSheet.create({
   notificationTopContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: viewportHeight * 0.01,
   },
   smallNotification: {
-    fontSize: 12,
+    fontSize: viewportWidth * 0.03,
     color: '#888888',
-    width: 50, // Ensure enough width for the text
+    width: viewportWidth * 0.12, // Ensure enough width for the text
   },
   notificationDate: {
-    fontSize: 12,
+    fontSize: viewportWidth * 0.03,
     color: '#888888',
   },
   notificationContent: {
-    marginBottom: 8,
+    marginBottom: viewportHeight * 0.01,
   },
   notificationTitle: {
-    fontSize: 16,
+    fontSize: viewportWidth * 0.045,
     fontWeight: 'bold',
+    marginBottom: viewportHeight * 0.01,
   },
   notificationDescription: {
-    fontSize: 14,
+    fontSize: viewportWidth * 0.035,
     color: '#333333',
   },
   navibarContainer: {
@@ -319,14 +338,5 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  lottie: {
-    width: 300,
-    height: 300,
   },
 });
