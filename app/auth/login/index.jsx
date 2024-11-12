@@ -2,7 +2,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvo
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { auth } from '../../../firebaseConfig';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { getCustomErrorMessage } from '../../../utils/authUtils';
 import { getDoc, doc, query, where, collection, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
@@ -18,6 +18,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false); // Loading state
+  const [resetEmail, setResetEmail] = useState(''); // State for reset email
+  const [isResetModalVisible, setIsResetModalVisible] = useState(false); // State for reset modal visibility
+  const [resetMessage, setResetMessage] = useState(''); // State for reset message
+  const [isSuccess, setIsSuccess] = useState(false); // State to track success or error
 
   const handleLogin = async () => {
     setIsLoading(true); // Start loading
@@ -90,6 +94,24 @@ export default function LoginScreen() {
     return null;
   };
 
+  const handlePasswordReset = async () => {
+    if (!resetEmail) {
+      setResetMessage('Please enter your email address.');
+      setIsSuccess(false);
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetMessage('Password reset email sent. Please check your inbox.');
+      setIsSuccess(true);
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      setResetMessage(getCustomErrorMessage(error));
+      setIsSuccess(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -124,7 +146,7 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
               />
-              <TouchableOpacity style={styles.forgotPasswordButton}>
+              <TouchableOpacity style={styles.forgotPasswordButton} onPress={() => setIsResetModalVisible(true)}>
                 <Text style={styles.forgotPasswordButtonText}>Forgot Password?</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
@@ -140,6 +162,33 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Password Reset Modal */}
+      {isResetModalVisible && (
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Reset Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={resetEmail}
+              onChangeText={setResetEmail}
+            />
+            {resetMessage ? <Text style={[styles.resetMessageText, isSuccess ? styles.successText : styles.errorText]}>{resetMessage}</Text> : null}
+            <TouchableOpacity style={styles.resetButton} onPress={handlePasswordReset}>
+              <Text style={styles.resetButtonText}>Send Reset Email</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => {
+              setIsResetModalVisible(false);
+              setResetMessage('');
+            }}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -222,5 +271,61 @@ const styles = StyleSheet.create({
   },
   loadingIndicator: {
     marginVertical: 30,
+  },
+  modalContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#ffffff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  resetMessageText: {
+    marginBottom: 10,
+  },
+  successText: {
+    color: 'green',
+  },
+  errorText: {
+    color: 'red',
+  },
+  resetButton: {
+    backgroundColor: '#000000',
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 10,
+    width: '100%',
+  },
+  resetButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    backgroundColor: '#cccccc',
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '100%',
+  },
+  cancelButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

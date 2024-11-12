@@ -52,6 +52,38 @@ export default function Notifications() {
     fetchEvents();
   }, []);
 
+  // Function to filter events based on search query and selected date
+  const filterEvents = (query, date) => {
+    const filtered = events.filter(event => {
+      const matchesSearchQuery = query ? event.title.toLowerCase().includes(query.toLowerCase()) ||
+        event.description.toLowerCase().includes(query.toLowerCase()) : true;
+      const matchesDate = date ? parse(event.date, 'dd MMM yyyy', new Date()).toDateString() === date.toDateString() : true;
+      return matchesSearchQuery && matchesDate;
+    });
+    setFilteredEvents(filtered);
+  };
+
+  // Handler for search input change
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    filterEvents(query, selectedDate);
+  };
+
+  // Handler for date change
+  const handleDateChange = (event, date) => {
+    setIsDatePickerVisible(false); // Hide date picker after selecting a date
+    if (date) {
+      setSelectedDate(date);
+      filterEvents(searchQuery, date);
+    }
+  };
+
+  // Handler to clear the date filter
+  const clearDateFilter = () => {
+    setSelectedDate(null);
+    filterEvents(searchQuery, null);
+  };
+
   // Handler for notification click
   const handleNotificationClick = (index, link) => {
     // Mark the notification as seen
@@ -68,37 +100,9 @@ export default function Notifications() {
     Linking.openURL(link);
   };
 
-  // Handler for search input change
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    if (query === '') {
-      setFilteredEvents(events);
-    } else {
-      const filtered = events.filter(event =>
-        event.title.toLowerCase().includes(query.toLowerCase()) ||
-        event.description.toLowerCase().includes(query.toLowerCase())
-      );
-      setFilteredEvents(filtered);
-    }
-  };
-
-  // Handler for date change
-  const handleDateChange = (event, date) => {
-    setIsDatePickerVisible(false); // Hide date picker after selecting a date
-    if (date) {
-      setSelectedDate(date);
-      const filtered = events.filter(event =>
-        parse(event.date, 'dd MMM yyyy', new Date()).toDateString() === date.toDateString()
-      );
-      setFilteredEvents(filtered);
-    }
-  };
-
-  // Handler to clear the date filter
-  const clearDateFilter = () => {
-    setSelectedDate(new Date());
-    setFilteredEvents(events);
-  };
+  useEffect(() => {
+    filterEvents(searchQuery, selectedDate);
+  }, [searchQuery, selectedDate]);
 
   if (loading) {
     return (
@@ -141,7 +145,7 @@ export default function Notifications() {
           {/* Date Picker Modal */}
           {isDatePickerVisible && (
             <DateTimePicker
-              value={selectedDate}
+              value={selectedDate || new Date()}
               mode="date"
               display="default"
               onChange={handleDateChange}

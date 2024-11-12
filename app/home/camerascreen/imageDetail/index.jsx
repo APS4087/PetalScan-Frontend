@@ -23,8 +23,7 @@ const ImageDetail = () => {
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [questionCount, setQuestionCount] = useState(0);
-  const [questionLimit, setQuestionLimit] = useState(5); // Default to 5
+  const [remainingQuestions, setRemainingQuestions] = useState(0);
   const flatListRef = useRef(null);
   const { user } = useAuth();
 
@@ -41,13 +40,13 @@ const ImageDetail = () => {
         if (userDoc.exists()) {
           const userData = userDoc.data();
           const limit = userData.userType === 'premium' ? 20 : 5;
-          setQuestionLimit(limit);
+          setRemainingQuestions(limit);
 
           // Generate a short description using GPT-4o mini
           const chatCompletion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: `You are a helpful assistant. Provide a short description for the following image detail: ${name}. Only respond to questions related to this image detail and politely decline any off-topic questions.` },
+              { role: 'system', content: `You are a helpful assistant. Provide a detailed description for the following image detail: ${name}. The description should be direct and informative.` },
             ],
             max_tokens: 50,
           });
@@ -72,34 +71,64 @@ const ImageDetail = () => {
   }, [name, userId]);
 
   useEffect(() => {
-    const checkAndResetQuestionCount = async () => {
+    const checkAndResetQuestions = async () => {
       const lastResetTime = await AsyncStorage.getItem('lastQuestionResetTime');
       const currentTime = new Date().getTime();
+      const userRef = doc(collection(db, 'users'), user.uid);
+      const userDoc = await getDoc(userRef);
+      let limit = 5; // Default limit for normal users
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        limit = userData.userType === 'premium' ? 20 : 5;
+      }
+
       if (!lastResetTime || currentTime - parseInt(lastResetTime) > 24 * 60 * 60 * 1000) {
         // More than 24 hours have passed since the last reset
-        setQuestionCount(0);
+        setRemainingQuestions(limit);
         await AsyncStorage.setItem('lastQuestionResetTime', currentTime.toString());
+        await AsyncStorage.setItem('remainingQuestions', limit.toString());
       } else {
-        const storedQuestionCount = await AsyncStorage.getItem('questionCount');
-        if (storedQuestionCount) {
-          setQuestionCount(parseInt(storedQuestionCount));
+        const storedQuestions = await AsyncStorage.getItem('remainingQuestions');
+        if (storedQuestions) {
+          setRemainingQuestions(parseInt(storedQuestions));
         }
       }
+
+      // Ensure remaining questions do not go below zero
+      if (remainingQuestions < 0) {
+        setRemainingQuestions(0);
+        await AsyncStorage.setItem('remainingQuestions', '0');
+      }
+
+      // Ensure remaining questions do not exceed the limit
+      if (remainingQuestions > limit) {
+        setRemainingQuestions(limit);
+        await AsyncStorage.setItem('remainingQuestions', limit.toString());
+      }
     };
-    checkAndResetQuestionCount();
-  }, []);
+    checkAndResetQuestions();
+  }, [user]);
+
+  useEffect(() => {
+    // Ensure remaining questions do not go below zero
+    if (remainingQuestions < 0) {
+      setRemainingQuestions(0);
+      AsyncStorage.setItem('remainingQuestions', '0');
+    }
+  }, [remainingQuestions]);
 
   const handleSend = async () => {
-    if (questionCount >= questionLimit) {
-      alert(`You have reached the limit of ${questionLimit} questions.`);
+    if (remainingQuestions <= 0) {
+      alert(`You have reached the limit of questions for today.`);
       return;
     }
 
     const userMessage = { text: inputText, sender: 'user', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
     setMessages([...messages, userMessage]);
     setInputText('');
-    setQuestionCount(questionCount + 1);
-    await AsyncStorage.setItem('questionCount', (questionCount + 1).toString());
+    setRemainingQuestions(remainingQuestions - 1);
+    await AsyncStorage.setItem('remainingQuestions', (remainingQuestions - 1).toString());
 
     try {
       const chatCompletion = await openai.chat.completions.create({
@@ -124,6 +153,21 @@ const ImageDetail = () => {
     }
   };
 
+  const resetQuestions = async () => {
+    const userRef = doc(collection(db, 'users'), user.uid);
+    const userDoc = await getDoc(userRef);
+    let limit = 5; // Default limit for normal users
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      limit = userData.userType === 'premium' ? 20 : 5;
+    }
+
+    setRemainingQuestions(limit);
+    await AsyncStorage.setItem('remainingQuestions', limit.toString());
+    await AsyncStorage.setItem('lastQuestionResetTime', new Date().getTime().toString());
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -145,7 +189,7 @@ const ImageDetail = () => {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>{toCapitalCase(name)}</Text>
-        <Text style={styles.questionCounter}>Questions Left: {questionLimit - questionCount}</Text>
+        <Text style={styles.questionCounter}>Questions Left: {remainingQuestions}</Text>
         <View style={styles.chatContainer}>
           <FlatList
             ref={flatListRef}
@@ -172,6 +216,11 @@ const ImageDetail = () => {
               <Text style={styles.sendButtonText}>Send</Text>
             </TouchableOpacity>
           </View>
+          {/* {__DEV__ && (
+            <TouchableOpacity style={styles.resetButton} onPress={resetQuestions}>
+              <Text style={styles.resetButtonText}>Reset Questions</Text>
+            </TouchableOpacity>
+          )} */}
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -201,7 +250,7 @@ const styles = StyleSheet.create({
     marginTop: viewportHeight * 0.07,
     marginBottom: viewportHeight * 0.02,
     textAlign: 'center',
-    color: '#004d40',
+    //color: '#004d40',
   },
   questionCounter: {
     fontSize: viewportWidth * 0.04,
@@ -254,6 +303,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: viewportWidth * 0.04,
     width: 40,
+  },
+  resetButton: {
+    backgroundColor: '#FF6347',
+    borderRadius: viewportWidth * 0.05,
+    paddingVertical: viewportHeight * 0.01,
+    paddingHorizontal: viewportWidth * 0.04,
+    marginTop: viewportHeight * 0.02,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resetButtonText: {
+    color: '#fff',
+    fontSize: viewportWidth * 0.04,
   },
   message: {
     padding: viewportWidth * 0.03,

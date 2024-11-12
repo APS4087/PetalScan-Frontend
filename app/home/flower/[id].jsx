@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { doc, getDoc, collection } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
@@ -9,7 +9,8 @@ import OpenAI from 'openai';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../../context/authContext';
 import LottieView from 'lottie-react-native';
-import platloadinganimation from '../../../assets/animations/plantLoadingAnimation.json';
+import platloadinganimation from '.././../../assets/animations/plantLoadingAnimation.json';
+import locationIcon from '../../../assets/Icons/location.png';
 
 const { width: viewportWidth, height: viewportHeight } = Dimensions.get('window');
 
@@ -21,8 +22,7 @@ const FlowerDetail = () => {
   const [error, setError] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [questionCount, setQuestionCount] = useState(0);
-  const [questionLimit, setQuestionLimit] = useState(5); // Default to 5
+  const [remainingQuestions, setRemainingQuestions] = useState(0);
   const flatListRef = useRef(null);
   const { user } = useAuth();
 
@@ -35,7 +35,7 @@ const FlowerDetail = () => {
       try {
         const docRef = doc(db, 'flowers', id);
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
+        if (docSnap.exists()) { 
           const flowerData = docSnap.data();
           setFlower(flowerData);
 
@@ -51,74 +51,86 @@ const FlowerDetail = () => {
           const description = chatCompletion.choices[0].message.content.trim();
 
           setMessages([
-            { text: description, sender: 'bot', timestamp: new Date().toLocaleTimeString() },
-            { text: `Hi, I am Petal-GPT. You have ${questionLimit} free questions you can ask me about ${flowerData.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
+            { text: description, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+            { text: `Hi, I am Petal-GPT. You have ${remainingQuestions} free questions you can ask me about ${flowerData.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
           ]);
         } else {
           setError('No such document!');
         }
       } catch (error) {
-        setError('Failed to load flower.');
+        setError('Failed to load data.');
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchFlower();
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const userRef = doc(collection(db, 'users'), user.uid);
-        const userDoc = await getDoc(userRef);
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          const limit = userData.userType === 'premium' ? 20 : 5;
-          setQuestionLimit(limit);
-          setMessages([
-            { text: `Hi, I am Petal-GPT. You have ${limit} daily free questions you can ask me about ${flower?.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString() }
-          ]);
-        } else {
-          console.error('No such user!');
+    const checkAndResetQuestions = async () => {
+      const lastResetTime = await AsyncStorage.getItem('lastQuestionResetTime');
+      const currentTime = new Date().getTime();
+      const userRef = doc(collection(db, 'users'), user.uid);
+      const userDoc = await getDoc(userRef);
+      let limit = 5; // Default limit for normal users
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        limit = userData.userType === 'premium' ? 20 : 5;
+      }
+
+      if (!lastResetTime || currentTime - parseInt(lastResetTime) > 24 * 60 * 60 * 1000) {
+        // More than 24 hours have passed since the last reset
+        setRemainingQuestions(limit);
+        await AsyncStorage.setItem('lastQuestionResetTime', currentTime.toString());
+        await AsyncStorage.setItem('remainingQuestions', limit.toString());
+      } else {
+        const storedQuestions = await AsyncStorage.getItem('remainingQuestions');
+        if (storedQuestions) {
+          setRemainingQuestions(parseInt(storedQuestions));
         }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
+      }
+
+      // Ensure remaining questions do not go below zero
+      if (remainingQuestions < 0) {
+        setRemainingQuestions(0);
+        await AsyncStorage.setItem('remainingQuestions', '0');
+      }
+
+      // Ensure remaining questions do not exceed the limit
+      if (remainingQuestions > limit) {
+        setRemainingQuestions(limit);
+        await AsyncStorage.setItem('remainingQuestions', limit.toString());
       }
     };
-
-    fetchUserData();
+    checkAndResetQuestions();
   }, [user]);
 
   useEffect(() => {
-    const checkAndResetQuestionCount = async () => {
-      const lastResetTime = await AsyncStorage.getItem('lastQuestionResetTime');
-      const currentTime = new Date().getTime();
-      if (!lastResetTime || currentTime - parseInt(lastResetTime) > 24 * 60 * 60 * 1000) {
-        // More than 24 hours have passed since the last reset
-        setQuestionCount(0);
-        await AsyncStorage.setItem('lastQuestionResetTime', currentTime.toString());
-      } else {
-        const storedQuestionCount = await AsyncStorage.getItem('questionCount');
-        if (storedQuestionCount) {
-          setQuestionCount(parseInt(storedQuestionCount));
-        }
-      }
-    };
-    checkAndResetQuestionCount();
-  }, []);
+    // Ensure remaining questions do not go below zero
+    if (remainingQuestions < 0) {
+      setRemainingQuestions(0);
+      AsyncStorage.setItem('remainingQuestions', '0');
+    }
+  }, [remainingQuestions]);
 
   const handleSend = async () => {
-    if (questionCount >= questionLimit) {
-      alert(`You have reached the limit of ${questionLimit} questions.`);
+    if (remainingQuestions <= 0) {
+      alert(`You have reached the limit of questions for today.`);
       return;
     }
 
-    const userMessage = { text: inputText, sender: 'user', timestamp: new Date().toLocaleTimeString() };
+    const userMessage = { 
+      text: inputText, 
+      sender: 'user', 
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+    };
     setMessages([...messages, userMessage]);
     setInputText('');
-    setQuestionCount(questionCount + 1);
-    await AsyncStorage.setItem('questionCount', (questionCount + 1).toString());
+    setRemainingQuestions(remainingQuestions - 1);
+    await AsyncStorage.setItem('remainingQuestions', (remainingQuestions - 1).toString());
 
     try {
       const chatCompletion = await openai.chat.completions.create({
@@ -130,7 +142,11 @@ const FlowerDetail = () => {
         max_tokens: 150,
       });
 
-      const botMessage = { text: chatCompletion.choices[0].message.content.trim(), sender: 'bot', timestamp: new Date().toLocaleTimeString() };
+      const botMessage = { 
+        text: chatCompletion.choices[0].message.content.trim(), 
+        sender: 'bot', 
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+      };
       setMessages([...messages, userMessage, botMessage]);
       flatListRef.current.scrollToEnd({ animated: true });
     } catch (error) {
@@ -141,6 +157,31 @@ const FlowerDetail = () => {
         Alert.alert('Error', 'There was an error processing your request. Please try again later.');
       }
     }
+  };
+
+  const viewOnMap = () => {
+    if (flower && flower.name) {
+      const query = `${flower.name} Singapore Botanic Garden`;
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+      Linking.openURL(url);
+    } else {
+      Alert.alert('Location not available', 'The location of this flower is not available.');
+    }
+  };
+
+  const resetQuestions = async () => {
+    const userRef = doc(collection(db, 'users'), user.uid);
+    const userDoc = await getDoc(userRef);
+    let limit = 5; // Default limit for normal users
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      limit = userData.userType === 'premium' ? 20 : 5;
+    }
+
+    setRemainingQuestions(limit);
+    await AsyncStorage.setItem('remainingQuestions', limit.toString());
+    await AsyncStorage.setItem('lastQuestionResetTime', new Date().getTime().toString());
   };
 
   if (loading) {
@@ -166,6 +207,11 @@ const FlowerDetail = () => {
         {/* Back button */}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()} accessibilityLabel="Go back">
           <Image source={images.backArrowIcon} style={styles.arrow} />
+        </TouchableOpacity>
+        {/* View on Map icon and text */}
+        <TouchableOpacity style={styles.mapIconContainer} onPress={viewOnMap} accessibilityLabel="View on Map">
+          <Text style={styles.mapText}>View on Map</Text>
+          <Image source={locationIcon} style={styles.locationIcon} />
         </TouchableOpacity>
         {flower && (
           <>
@@ -209,7 +255,7 @@ const FlowerDetail = () => {
           </>
         )}
         <View style={styles.chatContainer}>
-          <Text style={styles.questionCounter}>Questions Left: {questionLimit - questionCount}</Text>
+          <Text style={styles.questionCounter}>Questions Left: {remainingQuestions}</Text>
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -235,6 +281,11 @@ const FlowerDetail = () => {
               <Text style={styles.sendButtonText}>Send</Text>
             </TouchableOpacity>
           </View>
+          {/* {__DEV__ && (
+            <TouchableOpacity style={styles.resetButton} onPress={resetQuestions}>
+              <Text style={styles.resetButtonText}>Reset Questions</Text>
+            </TouchableOpacity>
+          )} */}
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -244,7 +295,6 @@ const FlowerDetail = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
     padding: '4%',
     marginTop: '2%',
   },
@@ -253,6 +303,23 @@ const styles = StyleSheet.create({
     top: '5%',
     left: '5%',
     zIndex: 1,
+  },
+  mapIconContainer: {
+    position: 'absolute',
+    top: '5%',
+    right: '5%',
+    zIndex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationIcon: {
+    width: 25,
+    height: 25,
+  },
+  mapText: {
+    marginLeft: 5,
+    color: '#004d40',
+    fontSize: 16,
   },
   arrow: {
     width: 25,
@@ -375,6 +442,19 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     width: '100%',
   },
+  resetButton: {
+    backgroundColor: '#FF6347',
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    marginTop: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resetButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
   message: {
     padding: 10,
     borderRadius: 20,
@@ -397,9 +477,10 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 10,
-    color: '#aaa',
+    color: '#004d40',
     marginTop: 5,
     alignSelf: 'flex-end',
+    width: 35,
   },
 });
 
