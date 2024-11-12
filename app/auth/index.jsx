@@ -58,20 +58,20 @@ export default function AuthScreen() {
       <TouchableOpacity style={styles.registerButton} onPress={() => router.push('/auth/register')}>
         <Text style={[styles.registerButtonText, styles.fontRegular]}>Register</Text>
       </TouchableOpacity>
-
+      {/* 
       <View style={styles.separatorContainer}>
         <View style={styles.separatorLine} />
         <Text style={[styles.separatorText, styles.fontItalic]}>or</Text>
         <View style={styles.separatorLine} />
-      </View>
-      <TouchableOpacity
+      </View> */}
+      {/* <TouchableOpacity
         style={styles.googleButton}
         // onPress={() => promptAsync()}
         // disabled={!request}
       >
         <Image source={require('../../assets/images/googleLogo.png')} style={styles.googleLogo} />
         <Text style={[styles.googleButtonText, styles.fontRegular]}>Continue with Google</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 }
