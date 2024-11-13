@@ -207,13 +207,14 @@ export default function PremiumFeatureScreen() {
 
         <Text style={styles.title}>PetalScan</Text>
         <Text style={styles.subtitle}>
-          Unlock all the power of this mobile tool and enjoy digital experience like never before!
+          Experience the full potential of PetalScan with our premium features!
         </Text>
-
+        
         <View style={styles.benefitContainer}>
           <Text style={styles.benefit}>No advertisements</Text>
-          <Text style={styles.benefit}>Unlimited snaps</Text>
-          <Text style={styles.benefit}>Singapore botanic garden's database</Text>
+          <Text style={styles.benefit}>Unlimited scans</Text>
+          <Text style={styles.benefit}>20 Petal-GPT prompts daily</Text>
+          <Text style={styles.benefit}>Real-time image recognition</Text>
         </View>
 
         {isPremium ? (
@@ -235,21 +236,21 @@ export default function PremiumFeatureScreen() {
                 style={[styles.plan, selectedPlan === 'Monthly' && styles.selectedPlan]}
                 onPress={() => handlePlanSelection('Monthly')}
               >
-                <Text style={styles.planType}>Monthly</Text>
+                <Text style={styles.planType}>Premium</Text>
                 <Text style={styles.planPrice}>$4.99/month</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.plan, selectedPlan === '20 snaps' && styles.selectedPlan]}
                 onPress={() => handlePlanSelection('20 snaps')}
               >
-                <Text style={styles.planType}>20 snaps</Text>
+                <Text style={styles.planType}>20 Scan Bundle</Text>
                 <Text style={styles.planPrice}>$2.00</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.plan, selectedPlan === '10 snaps' && styles.selectedPlan]}
                 onPress={() => handlePlanSelection('10 snaps')}
               >
-                <Text style={styles.planType}>10 snaps</Text>
+                <Text style={styles.planType}>10 Scan Bundle</Text>
                 <Text style={styles.planPrice}>$1.50</Text>
               </TouchableOpacity>
             </View>
@@ -376,29 +377,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     color: '#092765',
+    //borderWidth: 1,
+    width: '80%',
   },
+
   benefitContainer: {
     width: '100%',
     alignItems: 'flex-start',
     marginBottom: 20,
+    paddingHorizontal: 20,
   },
   benefit: {
     fontSize: 18,
     marginBottom: 10,
-    marginLeft: 10,
-    marginTop: 10,
-    color: '#000000',
+    color: '#000',
     fontWeight: 'bold',
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
   },
   planContainer: {
     width: '100%',
     marginBottom: 20,
+    paddingHorizontal: 20,
   },
   plan: {
     borderWidth: 1,
     borderColor: '#092765',
     borderRadius: 14,
-    padding: 12,
+    padding: 15,
     marginBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -414,15 +421,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#d3e4f2',
   },
   planType: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#0D368C',
   },
   planPrice: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#0D368C',
   },
+
   cancelText: {
     fontSize: 14,
     color: '#8391A1',

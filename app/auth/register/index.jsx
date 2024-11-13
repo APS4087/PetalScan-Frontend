@@ -1,10 +1,11 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal } from 'react-native';
-import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal, Keyboard } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../../../firebaseConfig';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { getCustomErrorMessage } from '../../../utils/authUtils';
+import images from '../../../components/data'; // Import images
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -15,6 +16,23 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false); // State to track keyboard visibility
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false); // State to track password visibility
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false); // State to track confirm password visibility
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setIsKeyboardVisible(true);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
 
   const handleRegister = async () => {
     if (password !== confirmPassword) {
@@ -45,6 +63,7 @@ export default function RegisterScreen() {
     } catch (error) {
       setErrorMessage(getCustomErrorMessage(error));
       setLoading(false);
+      console.log(error)
     }
   };
 
@@ -61,59 +80,82 @@ export default function RegisterScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollViewContainer}>
         <View style={styles.innerContainer}>
-          <TouchableOpacity style={styles.logo} onPress={() => router.push('/auth')}>
-            <Image source={require('../../../assets/Icons/backArrow.png')} style={styles.arrow} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Welcome!! Register to get started</Text>
+          {!isKeyboardVisible && (
+            <TouchableOpacity style={styles.logo} onPress={() => router.push('/auth')}>
+              <Image source={images.backArrowIcon} style={styles.arrow} />
+            </TouchableOpacity>
+          )}
+          <Text style={styles.title}>Create Your Account</Text>
+          <Text style={styles.title2}>Join us and start scanning</Text>
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
           
-          {loading ? (
-            <ActivityIndicator size="large" color="#0000ff" style={styles.loadingIndicator} />
-          ) : (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="Username"
-                placeholderTextColor="#8a8a8a"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
+          <TextInput
+            style={styles.input}
+            placeholder="Username"
+            placeholderTextColor="#8a8a8a"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#8a8a8a"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              placeholderTextColor="#8a8a8a"
+              secureTextEntry={!isPasswordVisible}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity
+              style={styles.togglePasswordVisibility}
+              onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            >
+              <Image
+                source={isPasswordVisible ? images.eyeOpenIcon : images.eyeCloseIcon}
+                style={styles.passwordVisibilityIcon}
               />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor="#8a8a8a"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
+            </TouchableOpacity>
+          </View>
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Confirm password"
+              placeholderTextColor="#8a8a8a"
+              secureTextEntry={!isConfirmPasswordVisible}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+            <TouchableOpacity
+              style={styles.togglePasswordVisibility}
+              onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
+            >
+              <Image
+                source={isConfirmPasswordVisible ? images.eyeOpenIcon : images.eyeCloseIcon}
+                style={styles.passwordVisibilityIcon}
               />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#8a8a8a"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm password"
-                placeholderTextColor="#8a8a8a"
-                secureTextEntry
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-              />
-              <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-                <Text style={styles.registerButtonText}>Register</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.loginLinkButton} onPress={() => router.push('/auth/login')}>
-                <Text style={styles.alreadyHaveAccountText}>Already have an account?
-                  <Text style={styles.loginLinkButtonText}>   Login Now</Text>
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading}>
+            {loading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.registerButtonText}>Register</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.loginLinkButton} onPress={() => router.push('/auth/login')}>
+            <Text style={styles.alreadyHaveAccountText}>Already have an account?
+              <Text style={styles.loginLinkButtonText}>   Login Now</Text>
+            </Text>
+          </TouchableOpacity>
 
           {/* Success Modal */}
           <Modal
@@ -165,9 +207,14 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   title: {
-    fontSize: 35,
+    fontSize: 30,
     fontWeight: 'bold',
-    marginBottom: 80,
+    marginBottom: 10,
+  },
+  title2: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 70,
   },
   input: {
     width: '100%',
@@ -178,12 +225,34 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: '#F7F8F9',
   },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#cccccc',
+    borderRadius: 8,
+    backgroundColor: '#F7F8F9',
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 12,
+  },
+  togglePasswordVisibility: {
+    padding: 10,
+  },
+  passwordVisibilityIcon: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
+  },
   registerButton: {
     backgroundColor: '#000000',
     padding: 12,
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 30,
+    marginTop: 10,
   },
   registerButtonText: {
     color: '#ffffff',

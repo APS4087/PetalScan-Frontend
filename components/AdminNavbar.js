@@ -24,7 +24,7 @@ function AdminNavbar({ navigation }) {
       <TouchableOpacity onPress={() => router.push("/adminHome/notification")}>
         <View style={styles.navItem}>
           <Image source={images.notificationIcon} style={styles.icon} />
-          <Text style={styles.label}>Notification</Text>
+          <Text style={styles.label}>News</Text>
         </View>
       </TouchableOpacity>
 

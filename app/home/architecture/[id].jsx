@@ -52,7 +52,7 @@ const ArchitectureDetail = () => {
 
           setMessages([
             { text: description, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
-            { text: `Hi, I am Petal-GPT. You have ${remainingQuestions} free questions you can ask me about ${architectureData.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+            { text: `Hi, I am Petal-GPT. You can ask me more about ${architectureData.name}.`, sender: 'bot', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
           ]);
         } else {
           setError('No such document!');

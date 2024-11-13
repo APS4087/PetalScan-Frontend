@@ -334,7 +334,7 @@ export default function CameraScreen() {
             !loading && (
               <TouchableOpacity onPress={navigateToPayment} style={styles.snapsButton}>
                 <Text style={styles.snapsText}>
-                  Snaps Left: {totalSnaps}
+                  Scans Left: {totalSnaps}
                 </Text>
               </TouchableOpacity>
             )

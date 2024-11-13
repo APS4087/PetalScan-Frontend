@@ -9,14 +9,11 @@ import { updateDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../../../../firebaseConfig';
 import { reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import LottieView from 'lottie-react-native';
+import images from '../../../../components/data';
 
 const { width, height } = Dimensions.get('window');
 
 export default function UpdateProfileScreen() {
-  const [countryCode, setCountryCode] = useState('SG');
-  const [callingCode, setCallingCode] = useState('65');
-  const [withFlag, setWithFlag] = useState(true);
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [username, setUsername] = useState(null);
   const [newUsername, setNewUsername] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -26,6 +23,8 @@ export default function UpdateProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalContent, setModalContent] = useState(null);
+  const [isNewPasswordVisible, setIsNewPasswordVisible] = useState(false); // State to track new password visibility
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false); // State to track confirm password visibility
 
   const router = useRouter();
   const { user, setUser } = useAuth();
@@ -141,20 +140,42 @@ export default function UpdateProfileScreen() {
         value={newUsername}
         onChangeText={setNewUsername}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="New Password"
-        secureTextEntry
-        value={newPassword}
-        onChangeText={setNewPassword}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        secureTextEntry
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-      />
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="New Password"
+          secureTextEntry={!isNewPasswordVisible}
+          value={newPassword}
+          onChangeText={setNewPassword}
+        />
+        <TouchableOpacity
+          style={styles.togglePasswordVisibility}
+          onPress={() => setIsNewPasswordVisible(!isNewPasswordVisible)}
+        >
+          <Image
+            source={isNewPasswordVisible ? images.eyeOpenIcon : images.eyeCloseIcon}
+            style={styles.passwordVisibilityIcon}
+          />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Confirm New Password"
+          secureTextEntry={!isConfirmPasswordVisible}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+        />
+        <TouchableOpacity
+          style={styles.togglePasswordVisibility}
+          onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
+        >
+          <Image
+            source={isConfirmPasswordVisible ? images.eyeOpenIcon : images.eyeCloseIcon}
+            style={styles.passwordVisibilityIcon}
+          />
+        </TouchableOpacity>
+      </View>
 
       <TouchableOpacity style={styles.updateButton} onPress={handleUpdateButtonClick} disabled={isLoading}>
         {isLoading ? (
@@ -275,6 +296,27 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     fontSize: width * 0.04,
     marginBottom: height * 0.01,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#cccccc',
+    borderRadius: 8,
+    backgroundColor: '#F7F8F9',
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 12,
+  },
+  togglePasswordVisibility: {
+    padding: 10,
+  },
+  passwordVisibilityIcon: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
   },
   updateButton: {
     backgroundColor: '#000',

@@ -4,27 +4,24 @@
     "slug": "petalscan",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "PetalScan",
-    "permissions": [
-      "CAMERA",
-      "CAMERA_ROLL"
-    ],
+    "icon": "./assets/images/appIcon.png",
+    "scheme": ["petalscan"],
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/appIcon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aungps001.petalscan"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/appIcon.png",
         "backgroundColor": "#ffffff"
-      
-      }
+      },
+      "package": "com.aungps001.petalscan"
     },
     "web": {
       "bundler": "metro",

@@ -1,5 +1,5 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
-import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Keyboard } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { auth } from '../../../firebaseConfig';
 import { signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
@@ -7,6 +7,7 @@ import { getCustomErrorMessage } from '../../../utils/authUtils';
 import { getDoc, doc, query, where, collection, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useAuth } from '../../../context/authContext';
+import images from '../../../components/data'; // Import images
 
 export default function LoginScreen() {
   // Initialize the router
@@ -22,6 +23,22 @@ export default function LoginScreen() {
   const [isResetModalVisible, setIsResetModalVisible] = useState(false); // State for reset modal visibility
   const [resetMessage, setResetMessage] = useState(''); // State for reset message
   const [isSuccess, setIsSuccess] = useState(false); // State to track success or error
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false); // State to track keyboard visibility
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false); // State to track password visibility
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setIsKeyboardVisible(true);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
 
   const handleLogin = async () => {
     setIsLoading(true); // Start loading
@@ -61,11 +78,7 @@ export default function LoginScreen() {
       }
     } catch (error) {
       console.error('Error signing in:', error);
-      if (error.code === 'auth/network-request-failed') {
-        setErrorMessage('Network error. Please check your internet connection and try again.');
-      } else {
-        setErrorMessage(getCustomErrorMessage(error));
-      }
+      setErrorMessage(getCustomErrorMessage(error));
     } finally {
       setIsLoading(false); // Stop loading
     }
@@ -101,6 +114,14 @@ export default function LoginScreen() {
       return;
     }
 
+    // Check if the email exists in the database
+    const userData = await getUserDataByEmail(resetEmail);
+    if (!userData) {
+      setResetMessage('No such user found.');
+      setIsSuccess(false);
+      return;
+    }
+
     try {
       await sendPasswordResetEmail(auth, resetEmail);
       setResetMessage('Password reset email sent. Please check your inbox.');
@@ -120,40 +141,50 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollViewContainer}>
         <View style={styles.innerContainer}>
-          <TouchableOpacity style={styles.logo} onPress={() => router.push('/auth')}>
-            <Image source={require('../../../assets/Icons/backArrow.png')} style={styles.arrow} />
-          </TouchableOpacity>
+          {!isKeyboardVisible && (
+            <TouchableOpacity style={styles.logo} onPress={() => router.push('/auth')}>
+              <Image source={images.backArrowIcon} style={styles.arrow} />
+            </TouchableOpacity>
+          )}
           <Text style={styles.title}>Sign in to your Account</Text>
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
           
-          {/* Show loading spinner if isLoading is true */}
-          {isLoading ? (
-            <ActivityIndicator size="large" color="#0000ff" style={styles.loadingIndicator} />
-          ) : (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={email}
-                onChangeText={setEmail}
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Enter your password"
+              secureTextEntry={!isPasswordVisible}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity
+              style={styles.togglePasswordVisibility}
+              onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+            >
+              <Image
+                source={isPasswordVisible ? images.eyeOpenIcon : images.eyeCloseIcon}
+                style={styles.passwordVisibilityIcon}
               />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
-              <TouchableOpacity style={styles.forgotPasswordButton} onPress={() => setIsResetModalVisible(true)}>
-                <Text style={styles.forgotPasswordButtonText}>Forgot Password?</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                <Text style={styles.loginButtonText}>Login</Text>
-              </TouchableOpacity>
-            </>
-          )}
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.forgotPasswordButton} onPress={() => setIsResetModalVisible(true)}>
+            <Text style={styles.forgotPasswordButtonText}>Forgot Password?</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.loginButtonText}>Login</Text>
+            )}
+          </TouchableOpacity>
           
           <TouchableOpacity style={styles.registerLinkButton} onPress={() => router.push('/auth/register')}>
             <Text style={styles.dontHaveAccountText}>Don't have an account?
@@ -236,6 +267,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 15,
     backgroundColor: '#F7F8F9',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#cccccc',
+    borderRadius: 8,
+    backgroundColor: '#F7F8F9',
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 12,
+  },
+  togglePasswordVisibility: {
+    padding: 10,
+  },
+  passwordVisibilityIcon: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
   },
   forgotPasswordButton: {
     alignSelf: 'flex-end',

@@ -122,7 +122,7 @@ export default function AdminNotificationScreen({ navigation }) {
     <View style={styles.screenContainer}>
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.notificationContainer}>
-          <Text style={styles.sectionTitle}>Notification</Text>
+          <Text style={styles.sectionTitle}>News</Text>
 
           {/* Search Bar with Icon */}
           <View style={styles.searchContainer}>
@@ -161,7 +161,7 @@ export default function AdminNotificationScreen({ navigation }) {
           {/* Add Notification Button with Material Icon */}
           <TouchableOpacity style={styles.blankContainer} onPress={() => alert('Add feature is still under development')}>
             <MaterialIcons name="add" size={30} color="black" />
-            <Text style={styles.addText}>Add Notification (Under Development)</Text>
+            <Text style={styles.addText}>Add News (Under Development)</Text>
           </TouchableOpacity>
 
           {/* Notification Items */}
@@ -223,6 +223,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: viewportWidth * 0.06,
     fontWeight: 'bold',
+    marginLeft: viewportWidth * 0.02,
     marginBottom: viewportHeight * 0.02,
   },
   searchContainer: {
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   addText: {
-    marginLeft: 5,
+    marginLeft: 10,
     fontSize: 10,
     width: 200,
     color: '#888',

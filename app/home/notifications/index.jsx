@@ -121,7 +121,7 @@ export default function Notifications() {
     <View style={styles.screenContainer}>
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.notificationContainer}>
-          <Text style={styles.sectionTitle}>Notification</Text>
+          <Text style={styles.sectionTitle}>News</Text>
 
           {/* Search Bar with Icon */}
           <View style={styles.searchContainer}>
@@ -217,6 +217,7 @@ const styles = StyleSheet.create({
     fontSize: viewportWidth * 0.06,
     fontWeight: 'bold',
     marginBottom: viewportHeight * 0.02,
+    marginLeft: viewportWidth * 0.02,
   },
   searchContainer: {
     flexDirection: 'row',
