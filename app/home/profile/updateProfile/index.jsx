@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, TextInput, StyleSheet, Dimensions, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, Image, TouchableOpacity, TextInput, StyleSheet, Dimensions, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../../../context/authContext';  
@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../../../../firebaseConfig';
-import { reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth';
 import LottieView from 'lottie-react-native';
 import images from '../../../../components/data';
 
@@ -82,9 +82,12 @@ export default function UpdateProfileScreen() {
       const updatedData = {};
       if (newUsername && newUsername !== user.username) updatedData.username = newUsername;
       if (profileImage && profileImage.uri !== user.profileImageUrl) updatedData.profileImageUrl = profileImageUrl;
-      if (newPassword) updatedData.password = newPassword;
 
       await updateDoc(userDocRef, updatedData);
+
+      if (newPassword) {
+        await updatePassword(auth.currentUser, newPassword);
+      }
 
       setUser({
         ...user,
@@ -115,138 +118,146 @@ export default function UpdateProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/home/profile')}>
-          <Ionicons name="arrow-back" size={width * 0.09} color="black" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.profileContainer}>
-        <Text style={styles.profileTitle}>Update Profile</Text>
-        <TouchableOpacity onPress={handleProfilePictureClick}>
-          <Image
-            source={{ uri: profileImage ? profileImage.uri : (username ? `https://api.multiavatar.com/${username}.png` : 'https://api.multiavatar.com/bill.png') }}
-            style={styles.profileImage}
-          />
-        </TouchableOpacity>
-        <Text style={styles.profileName}>{user?.username}</Text>
-        <Text style={styles.profileEmail}>{user?.email}</Text>
-      </View>
-
-      <TextInput
-        style={styles.input}
-        placeholder="New Username"
-        value={newUsername}
-        onChangeText={setNewUsername}
-      />
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder="New Password"
-          secureTextEntry={!isNewPasswordVisible}
-          value={newPassword}
-          onChangeText={setNewPassword}
-        />
-        <TouchableOpacity
-          style={styles.togglePasswordVisibility}
-          onPress={() => setIsNewPasswordVisible(!isNewPasswordVisible)}
-        >
-          <Image
-            source={isNewPasswordVisible ? images.eyeOpenIcon : images.eyeCloseIcon}
-            style={styles.passwordVisibilityIcon}
-          />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder="Confirm New Password"
-          secureTextEntry={!isConfirmPasswordVisible}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-        />
-        <TouchableOpacity
-          style={styles.togglePasswordVisibility}
-          onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
-        >
-          <Image
-            source={isConfirmPasswordVisible ? images.eyeOpenIcon : images.eyeCloseIcon}
-            style={styles.passwordVisibilityIcon}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={styles.updateButton} onPress={handleUpdateButtonClick} disabled={isLoading}>
-        {isLoading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text style={styles.updateButtonText}>Update Profile</Text>
-        )}
-      </TouchableOpacity>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isModalVisible}
-        onRequestClose={() => {
-          setIsModalVisible(!isModalVisible);
-        }}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalView}>
-            {modalContent === 'password' && (
-              <>
-                <Text style={styles.modalTitle}>Enter Current Password</Text>
-                <Text style={styles.modalDescription}>Please enter your current password to confirm the changes.</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Current Password"
-                  secureTextEntry
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                />
-                <TouchableOpacity style={styles.modalButton} onPress={handleUpdateProfile} disabled={isLoading}>
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.modalButtonText}>Submit</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, { backgroundColor: '#ccc' }]}
-                  onPress={() => setIsModalVisible(false)}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              </>
-            )}
-            {modalContent === 'success' && (
-              <>
-                <LottieView
-                  source={require('../../../../assets/animations/plantSuccess.json')}
-                  autoPlay
-                  loop={false}
-                  style={styles.animation}
-                />
-                <Text style={styles.successText}>Profile updated successfully!</Text>
-              </>
-            )}
-            {modalContent === 'error' && (
-              <>
-                <LottieView
-                  source={require('../../../../assets/animations/errorAnimation.json')}
-                  autoPlay
-                  loop={false}
-                  style={styles.animation}
-                />
-                <Text style={styles.errorText}>Failed to update profile. Please try again.</Text>
-              </>
-            )}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+    >
+      <ScrollView contentContainerStyle={styles.scrollViewContainer}>
+        <View style={styles.innerContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.push('/home/profile')}>
+              <Ionicons name="arrow-back" size={width * 0.09} color="black" />
+            </TouchableOpacity>
           </View>
+
+          <View style={styles.profileContainer}>
+            <Text style={styles.profileTitle}>Update Profile</Text>
+            <TouchableOpacity onPress={handleProfilePictureClick}>
+              <Image
+                source={{ uri: profileImage ? profileImage.uri : (username ? `https://api.multiavatar.com/${username}.png` : 'https://api.multiavatar.com/bill.png') }}
+                style={styles.profileImage}
+              />
+            </TouchableOpacity>
+            <Text style={styles.profileName}>{user?.username}</Text>
+            <Text style={styles.profileEmail}>{user?.email}</Text>
+          </View>
+
+          <TextInput
+            style={styles.input}
+            placeholder="New Username"
+            value={newUsername}
+            onChangeText={setNewUsername}
+          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="New Password"
+              secureTextEntry={!isNewPasswordVisible}
+              value={newPassword}
+              onChangeText={setNewPassword}
+            />
+            <TouchableOpacity
+              style={styles.togglePasswordVisibility}
+              onPress={() => setIsNewPasswordVisible(!isNewPasswordVisible)}
+            >
+              <Image
+                source={isNewPasswordVisible ? images.eyeOpenIcon : images.eyeCloseIcon}
+                style={styles.passwordVisibilityIcon}
+              />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Confirm New Password"
+              secureTextEntry={!isConfirmPasswordVisible}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+            <TouchableOpacity
+              style={styles.togglePasswordVisibility}
+              onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
+            >
+              <Image
+                source={isConfirmPasswordVisible ? images.eyeOpenIcon : images.eyeCloseIcon}
+                style={styles.passwordVisibilityIcon}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.updateButton} onPress={handleUpdateButtonClick} disabled={isLoading}>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.updateButtonText}>Update Profile</Text>
+            )}
+          </TouchableOpacity>
+
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={isModalVisible}
+            onRequestClose={() => {
+              setIsModalVisible(!isModalVisible);
+            }}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalView}>
+                {modalContent === 'password' && (
+                  <>
+                    <Text style={styles.modalTitle}>Enter Current Password</Text>
+                    <Text style={styles.modalDescription}>Please enter your current password to confirm the changes.</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="Current Password"
+                      secureTextEntry
+                      value={currentPassword}
+                      onChangeText={setCurrentPassword}
+                    />
+                    <TouchableOpacity style={styles.modalButton} onPress={handleUpdateProfile} disabled={isLoading}>
+                      {isLoading ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Text style={styles.modalButtonText}>Submit</Text>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalButton, { backgroundColor: '#ccc' }]}
+                      onPress={() => setIsModalVisible(false)}
+                    >
+                      <Text style={styles.modalButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+                {modalContent === 'success' && (
+                  <>
+                    <LottieView
+                      source={require('../../../../assets/animations/plantSuccess.json')}
+                      autoPlay
+                      loop={false}
+                      style={styles.animation}
+                    />
+                    <Text style={styles.successText}>Profile updated successfully!</Text>
+                  </>
+                )}
+                {modalContent === 'error' && (
+                  <>
+                    <LottieView
+                      source={require('../../../../assets/animations/errorAnimation.json')}
+                      autoPlay
+                      loop={false}
+                      style={styles.animation}
+                    />
+                    <Text style={styles.errorText}>Failed to update profile. Please try again.</Text>
+                  </>
+                )}
+              </View>
+            </View>
+          </Modal>
         </View>
-      </Modal>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -254,6 +265,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  scrollViewContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingBottom: 20,
+  },
+  innerContainer: {
+    flex: 1,
     padding: width * 0.05,
     marginTop: height * 0.11,
   },

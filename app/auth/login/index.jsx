@@ -113,17 +113,20 @@ export default function LoginScreen() {
       setIsSuccess(false);
       return;
     }
-
+  
+    // Normalize the email to lowercase
+    const normalizedEmail = resetEmail.trim().toLowerCase();
+  
     // Check if the email exists in the database
-    const userData = await getUserDataByEmail(resetEmail);
+    const userData = await getUserDataByEmail(normalizedEmail);
     if (!userData) {
       setResetMessage('No such user found.');
       setIsSuccess(false);
       return;
     }
-
+  
     try {
-      await sendPasswordResetEmail(auth, resetEmail);
+      await sendPasswordResetEmail(auth, normalizedEmail);
       setResetMessage('Password reset email sent. Please check your inbox.');
       setIsSuccess(true);
     } catch (error) {
@@ -132,7 +135,6 @@ export default function LoginScreen() {
       setIsSuccess(false);
     }
   };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
